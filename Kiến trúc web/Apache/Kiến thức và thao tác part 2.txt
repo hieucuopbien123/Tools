@@ -1,0 +1,167 @@
+Mô hình LAMP(Linux Apache MySql Php) là 1 hệ thống lưu trữ và chạy website rất phổ biến.
+LAMP Stack: Linux là cơ sở nền tảng cho các phần mềm khác; Apache sẽ đóng vai trò như 1 http server để xử lý các yêu cầu từ client; Mysql là cơ sở dữ liệu cho thông tin trên website; PHP sau đó sẽ xử lý để kết nối MySQL để lấy data và trả lại cho Apache để apache trả lại cho máy khách
+
+Client Browser <-> Server Linux[Apache <-> PHP <-> MySQL]
+
+Nhâp địa chỉ vào trình duyệt -> VD http://www.example.com/login.php thì trình duyệt sẽ biết là gửi yêu câu đến địa chỉ http://www.example.com và xin tải trang login.php -> web server tại địa chỉ đó nhận được yêu cầu đọc login.php -> web server(apache) đọc file login.php từ ổ cứng lưu trữ host -> host trả về và webserver nhận ra nó là php chứ kp html hay ảnh nên sẽ gửi lại file đó cho module php xử lý -> PHP chạy các dòng mã PHP nhận được từ apache và trong đó nó lại yêu cầu truy cập cơ sở dữ liệu MySql để lấy data -> module PHP tiến hành kết nối với MySQL và gửi cho MySQL truy vấn -> MySQL xử lý query và gửi lại dât cho PHP -> PHP hoàn thanh chạy code và trả lại kết quả cho Apache là đã xử lý xong dạng .php -> Apache trả lại cho trình duyệt dạng mã HTML để trình duyệt dựng nội dung đó ra màn hình
+
+
+Thông tin cơ bản về Apache
+httpd -V
+httpd -M
+Khởi chạy Apache (start), dừng (stop), khởi động lại restart
+httpd -k start
+Khởi chạy Apache (nối terminate) 
+httpd -DFOREGROUND
+
+
+CentOS là 1 hệ điều hành là bản phân phối của Linux
+
+
+Trong apache có 2 loại module: static module tích hợp sẵn trong mã chạy Apache từ khi build code và httpd -M sẽ in hết; shared là module nằm trên 1 file độc lập mà ta cấu hình để khi Apache chạy nó tải vào
+Các module nạp vào bằng chỉ thị LoadModule và ta comment hay uncomment để quyết định dùng hay k. Các module là các file .so
+
+VD: alias_module là module mở rộng của mod_rewrite, cung cấp chỉ thị Alias, AliasMatch, Redirect, RedirectMatch thay thế cho nhiều TH của mod_rewrite đơn giản hơn. Ánh xạ url ngắn gọn đến vị trí thật trên đĩa. VD: 
+Redirect 301 "/three" "http://example.com/other" #chuyển hướng 1 url (301)
+RedirectMatch "(.*)\.gif$" "http://other.example.com$1.jpg" 
+#chuyển các file .gif sang một domain mới
+
+VD: deflate_module nén file trước khi tải về cho user
+#Ví dụ, file .html, .xml, .js, .css nén trước khi trả về cho user
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+
+VD: 
+allowmethods_module
+Chỉ cho phép một số phương thức HTTP Request gửi đến (POST, GET, PUT, DELETE ...) bằng chỉ AllowMethods
+#ví dụ cho phép GET, POST
+AllowMethods GET POST OPTIONS
+=> https://xuanthulab.net/cac-module-trong-apache.html liệt kê các module và vai trò
+
+
+mod_access_compat giúp xác thực quyền truy cập cơ bản. Các chỉ thị của module này có hiệu lực ở cấu hình <Directory>, <Files> và <Location>
+Các chỉ thị:
+Allow from all|host|env
+Allow from all     # tất cả được truy cập
+Allow from 123.123 # được phép từ IP
+=> Cho phép truy cập từ biến được chỉ ra như all (tất cả) hay từ một IP..
+Deny  from all|host|env     # từ chối cho truy cập
+Order Deny,Allow  # tổng hợp Deny trước rồi Allow
+Order Allow,Deny  # tổng hợp Allow trước rồi Deny
+=> Ví dụ chỉ chấp nhận truy cập từ mydomain.com:
+Order Deny,Allow
+Deny from all
+Allow from mydomain.com
+
+
+Các thiết lập mặc định là:
+Document root Directory: /var/www/html or /var/www
+File cấu hình: httpd.conf
+Cổng HTTP mặc định: 80 TCP
+Cổng HTTPS mặc định: 443 TCP
+Log truy cập tại: /var/log/httpd/access_log
+Log ghi lại lỗi tại: /var/log/httpd/error_log
+Lệnh khởi động lại Apache:  #service httpd restart
+
+Cập nhập Apache với:
+yum update httpd
+apt-get install apache2
+
+VD: 
+<Directory />
+   Options None
+   Order deny,allow
+   Deny from all
+</Directory>
+=> Options None k cho phép User bật lại thiết lập(VD cố tính bật thông qua file htaccess)
+Deny from all để k ai được quyền truy cập thư mục gốc
+
+Ta có thể giới hạn kích thước gửi đến, mặc định là k giới hạn:
+<Directory "/var/www/myweb1/user_uploads">
+   LimitRequestBody 512000//k load được quá 512kb trong request
+</Directory>
+
+
+CGI(Common Gateway Interface) phân biệt tránh nhầm với CGI(Computer-Generated Imagery) trong kỹ xảo điện ảnh
+CGI được viết bằng Perl or C hoặc có thể chỉ là 1 shellscript đơn giản. Để tương tác server-client và các server với nhau. VD client gửi 1 form lên server thì nếu nhận được những thông tin phức tạp thì server sẽ k trực tiếp xử lý công việc này mà chuyển cho các CT khác gọi là gateway xử lý. CGI Script chính là CT chạy gateway trên WebServer. 
+Quy trình: Trình duyệt chuyển dữ liệu đến server -> server chuyển đến 1 CGI Script -> CGI Script xử lý và có thể chuyển cho 1 ứng dụng khác nếu cần thiết, sau đó gửi dữ liệu xuất ra cho web server -> web server chuyển dữ liệu lại cho trình duyệt
+CGI script cũng có thể xác nhận định danh của user và những thông tin về password của họ, cấp cho user quyền truy xuất theo những giới hạn của Web site
+
+
+mod_actions để thi hành CGI Script dựa theo kiểu file or method đến. 
+Cú pháp: Action action-type cgi-script [virtual]
+Thì action-type là MIME được thêm vào nhờ mod_mime bằng chỉ thị AddType như image/jpeg
+cgi-script là vị trí của CGI Script
+virtual thêm vào để loại bỏ các Handler phía trước
+Ví dụ:
+# Chạy image.cgi khi mở file .gif
+Action image/gif /cgi-bin/images.cgi
+
+# Mở .php bằng php.cgi
+AddHandler my-file-type .php
+Action my-file-type "/cgi-bin/php.cgi"
+
+# Thiết lập một Handler mới trong Virtual Host
+<Location "/news">
+    SetHandler news-handler
+    Action news-handler "/cgi-bin/news.cgi" virtual
+</Location>
+
+Chạy CGI dựa theo phương thức gửi đến với chỉ thị Script, VD:
+Script POST "/cgi-bin/postcontent.cgi" => gặp post thì chạy CGI Script này
+
+
+Handler là cơ chế được thi hành khi 1 file nào đó được apache gọi đến. Điều đó có nghĩa là mỗi kiểu file .php, .html, .cgi có handler riêng. Có loại tải vào bằng Module như php, có loại có sẵn trong Apache. Các Handler mặc định tích hợp sẵn là:
+default-handler : sử dụng phục vụ các nội dung tĩnh (như các file ảnh .jpg ...)
+send-as-is : (mod_asis) - Apache gửi file nhưng không có hầu hết phần header thông thường
+cgi-script : hander này thi hành file như cgi script
+server-info : lấy thông tin server
+server-status : lấy trạng thái server
+type-map : phân tích file, ánh xạ đến nội dung cần thiết
+Handler cũng được gán bằng một CGI script được kích hoạt bởi Action, ví dụ khi khi gọi đến file có phần mở rộng .xyz thì xử lý file đó với script CGI "/cgi-bin/program.cgi":
+# Files of a particular file extension
+AddHandler my-file-type .xyz
+Action my-file-type "/cgi-bin/program.cgi"
+VD: thêm vào VirtualHost thiết lập:
+<Location "/server-info">
+    SetHandler server-info
+</Location>
+=> Khi gọi đến địa chỉ /server-info thì Handler có sẵn server-info sẽ thi hành và trả về toàn bộ thông tin của Apache Server. Tương tự vơi server-status
+
+Xử lý trong file httpd.conf:
+#Thêm một hander
+AddHandler handler-name extension
+# handler-nam là tên handler
+# extension là phần mở rông của file gắn với handler (php, html ...)
+
+#Loại bỏ Handler
+RemoveHandler extension
+# extension là phần mở rông của file gắn với handler cần bỏ
+
+# Thiết lập hander cho một nhóm file phù hợp với cú pháp: SetHandler handler-name
+VD: Các file .php sẽ mở bằng handler có tên application/x-httpd-php
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+1 số PHP Handler có thể sử dụng với Apache như CGI, DSO, FPM, FCGId, suPHP
+
+Apache 2.0 Handler là Handler PHP mặc định trong Apache/Php, nó thiết lập tính an toàn cao bằng cách chạy các script php với user là nobody hoặc apache, tuy nhiên nếu dùng suPHP thì an toan hơn nhiều, nhưng suPHP không còn được duy trì cập nhật (bản cuối 2013 suphp.org)
+
+FastCGI Handler
+FastCGI kế thừa từ CGI nó được tùy chỉnh để giảm tải sự tương tác giữa script CGI và Webserver, cho phép Server phụ vụ được nhiều yêu cầu cùng lúc hơn.
+
+
+suEXE giúp chạy CGI dưới 1 user khác với user đang chạy Apache HTTPD, mặc định thì cùng user.
+Khi sử dụng tính năng này mục đích để gán user cho những VirtualHost khác nhau. Ta nên quản lý user chặt chẽ, nếu k thì k nên dùng suEXE
+
+httpd -V sẽ ra -D SUEXEC_BIN="/apache/bin/suexec" là vị trí lưu suEXE
+
+Để sử dụng suEXE trên VirtualHost. VD:
+<VirtualHost 123.123.123.123:80>
+    ....
+    SuexecUserGroup abc xyz
+    ....
+</VirtualHost>
+=> ở host địa chỉ và cổng trên nếu chạy CGI với FastCHI or PHP-FPM thì nó sẽ chạy tới user là abc và group là xyz
+
+Dừng lại publish global, dùng VirtualHost, self-sign SSL => để học tiếp phải đăng nhập được vào Router của wifi cơ

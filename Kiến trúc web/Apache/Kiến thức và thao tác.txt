@@ -1,0 +1,117 @@
+Các cái hosting online với database online cũng chỉ là nó cung cho ta cái web server để ta nhét cái file front-end vào đấy, xong có cả database nx mà thôi
+VD: trên wordpress nó cho tạo front-end bằng giao diện, xong các cái máy chủ web và database(cần cho các bài viết chẳng hạn) thì nó cung ở tầng dưới hết luôn chứ thực sự tạo 1 webapp k đơn giản v.
+VD: wordpress trên docker ta cài thì phải cài apache server httpd, xong connect nó với wordpress, xong connect database của ta vào wordpress luôn -> như v ta ta mới xong 1 web app đầy đủ thủ công
+Wordpress cũng chỉ là 1 tool tạo website, khi ta dùng thủ công tự tạo front-end, webserver, database thì wordpress cung 1 template cho cấu trúc file như việc dùng trong docker, vào thấy mục lục, ấn vào php để hiện file -> đó là template của wordpress cung theo cấu trúc như v thôi
+Server mặc định khi dùng wordpress kp là Apache mà là cái éo gì ấy, có thể check trong tab Network-> ấn 1 request bất kỳ -> mục Header kéo xuống có ghi tên web server
+
+Apache HTTP server: phần mềm web server miễn phí mã nguồn mở phổ biến nhất thế giới, kể cả dùng cho mục đích thương mại.
+Người dùng tương tác với nó đơn giản bằng cách gửi 1 HTTP request tới 1 địa chỉ IP để nhận kết quả, thì địa chỉ IP đó chính là địa chỉ web server. Khi nói tới web server, ta đang đề cập tới góc độ phần mềm. Còn các server mà to đùng với phần cứng kinh khủng thì đang refer tới phần database lưu trữ và xử lý query nhiều hơn.
+
+Cả database và web server đều phải xử lý vấn đề quan trọng nhất là xử lý nhiều request đến đồng thời từ phía người dùng. Nếu 1 người gửi quá nhiều request đến IP của server mà đầu vào nhỏ, đầu ra lớn thì đó là tấn công DDOS. Điều này thường có thể ngăn chặn bằng việc xử lý thêm nếu 1 IP gửi quá nhiều request thì chặn
+Hoạt động tốt cả Unix và Window.
+
+Cơ chế: người dùng gửi request tới -> server tìm file cần trả lời đúng yêu cầu người dùng -> gửi lại cho người dùng => Mỗi request là 1 đơn luồng, dùng http protocol
+
+Apache bảo mật tốt và có độ tùy biến cao. Quản trị viên có thể tắt, thêm chức năng, dùng các module bảo mật như chứng thực mật khẩu ok hết.
+
+Hoạt động hiệu quả với website Wordpress, cấu trúc module, dễ dùng. Nhưng traffic lớn trong 1 thời điểm thì dễ nghẽn mạng, 1 số thiết lập có thể là điểm yếu về bảo mật
+
+Cách dùng: 
+download apache -> a number of third party vendors -> Apache Lounge -> cài 64bit -> giải nén vào ổ C -> vào bin -> chạy httpd.exe -> vào browser: localhost -> hiện It works!! là chạy thành công
+
+Tùy bản Apache mà được xây dựng trên Visual C Redistributiuon for Visual Studio phiên bản khác nhau mà phải có Visual Studio mới chạy được apache
+Ta giải nén vào ổ C mà kp là ổ khác vì cấu hình này được chỉnh sẵn trong file config là DocumentRoot rồi nên nếu ta dùng thư mục khác thì phải thay đổi config thư mục như trong docker ta set ấy
+Tắt warning thiếu servername: vào C:\Apache24\conf\httpd.conf -> uncomment: #ServerName www.example.com:80 -> sửa thành: ServerName localhost
+
+Bật mod_rewrite trong Apache trên localhost: cần thiết khi dùng Wordpress Permalink hay rewrite cho htaccess
+-> uncomment: #LoadModule rewrite_module modules/mod_rewrite.so trong file config -> sửa: AllowOverride None thành AllowOverride All 
+K chỉ Apache mà nhiều phần mềm tương tác yêu cầu phải bật mod_rewrite tương tự
+
+Cài service cho Apache: Mở Services của window sẽ k thấy Apache
+-> cmd -> cd C:\Apache24\bin -> httpd -k install  => 1 service tên là Apache2.4 đã có trên Service của window. Ta có thể chỉnh tên tùy ý nếu muốn: httpd -k install -n "ten-service" -> Bh ta có thể start, stop, restart tùy ý service này trong Service của window or dùng cmd:
+net start Apache2.4
+net stop Apache2.4
+=> Khi install như v thì service của Apache sẽ tự khởi động cùng với window, có thể chỉnh thành Manual ở Service của window or dùng commandline tắt dịch vụ đi: sc delete Apache2.4
+
+Trong Apache có rất nhiều module tùy chỉnh: bh ta thử dùng module mod_rewrite của apache để viết lại url trong config hiển thị file about.html khi dùng url: <host>/about
+=> vào file config -> uncomment module mod_rewrite -> vào <Directory> mà gọi htdocs và thêm: 
+RewriteEngine on # để bật Rewrite, cần dùng nó ở mỗi thư mục muốn nó hoạt động
+RewriteRule ^about$ about.html [NC] # để chuyển hướng mọi request bắt đầu và kết thúc bằng about ở url(Vd: /about) thì sẽ lấy file about.html
+
+=> RewriteEngine Pattern Substitution [flags]
+với Pattern là RegExp(VD: ^/?([a-z])/(.*)$ và dùng $1, $2 để lấy ([a-z]) và(.*)
+Substitution là url mới 
+flags gồm: [L] là nếu rule này thực hiện thì các RewriteRule ở sau nó sẽ bỏ qua; [F] trả về mã 403 cấm truy cập; [G] trả về mã 410 file bị xóa; [N] Rule lặp đi lặp lại cho đến khi kết quả URL không còn bị thay thế. Có thể chỉ ra số lần lặp [N=100]; [R=code] chuyển hướng URL với mã code chỉ ra (ví dụ [R=301])
+Có thể có nhiều cái RewriteCond đứng trước 1 RewriteRule để định nghĩa ra các điều kiện thỏa mãn mới chạy vào RewriteRule. VD:
+RewriteCond %{DOCUMENT_ROOT}/$1 !-f
+RewriteCond %{HTTP_POST} ^(admin.example.com)$
+RewriteRule ^/?([a-z]+)/(.*)$ /admin.foo?page=$1&id=$2&host=%1 [PT]
+=> Tức là RewriteCond TestString CondPattern [flags]
+Là nếu là method POST tới url admin.example.com và nếu URL chứa DOCUMENT_ROOT/... và ! là phủ định, - là url k bị biến đổi, f là file 
+$1 là refer đến $1 của RewriteCond đầu tiên, $2 là (.*) ở đằng trước, %1 là url (admin.example.com) ở trên
+Nó có thể check url, biến môi trường, method. Nếu ĐK đúng thì RewriteRule gần nhất sau nó được dùng
+[flags] của nó VD [OR] là toán tử kết hợp 2 RewriteCond(mặc định là [AND]) còn [NC] là phân biệt chữ hoa, thường
+CondPartern là regexp kiểm tra sự phù hợp của TestString. VD:
+-s là check TestString là pathname và test xem file nào với size > 0 tồn tại k
+-l là check symbolic link
+-d là kiểm tra url là 1 directory và check directory đó tồn tại
+TestString là chuỗi chứa tham số kiểm tra. Có thể chưa biến toàn cục %{NAME_OF_VARIABLE} là các biến gửi đến như QUERY_STRING, REMOTE_ADDR, REMOTE_HOST, REQUEST_METHOD, HTTP_USER_AGENT, HTTP_HOST
+VD: check trình iPhone hay Android truy cập kiểm tra USER_AGENT
+RewriteCond  "%{HTTP_USER_AGENT}"  "(iPhone|Android)" => check xem biến này của thiết bị có dùng 2 hđh này k
+
+RewriteBase URL-path -> thiết lập URL cơ sở cho thư mục
+
+VD:
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteRule ^.*$ - [L]
+...Các RewriteRule khác
+=> nếu là request file thì thực hiện cái này và bỏ qua các RewriteRule dưới, nếu k thì các RewriteRule dưới xử lý 
+
+VD:
+RewriteEngine On
+#Chuyển hướng 1 URL cụ thể
+RewriteEngine  on
+RewriteRule    "^/url-cu\.html$"  "url-moi.html"  [R=301]
+#Chuyển hướng thư mục news sang domain (server mới)
+RewriteRule   "^/docs/(.+)"  "http://new.example.com/docs/$1"  [R,L]
+
+VD:
+RewriteCond "%{HTTP_HOST}" "!^www\." [NC]
+RewriteCond "%{HTTP_HOST}" "!^$"
+RewriteRule "^/?(.*)"      "http://www.%{HTTP_HOST}/$1" [L,R,NE]
+=> Mọi URI k có www sẽ thành có www
+
+Vd:
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP_HOST} !^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
+RewriteCond %{HTTPS} on
+RewriteCond %{HTTP_HOST} !^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+=> Tương tự như trên nhưng HTTPS là on hay off để check connection có SSL/TLS k
+
+VD:
+RewriteCond "%{HTTP_REFERER}" "!^$"
+RewriteCond "%{HTTP_REFERER}" "!www.example.com" [NC]
+RewriteRule "\.(gif|jpg|png)$"    "-"   [F,NC]
+=> so sánh HTTP_REFERER với các url kia để cấm các trang web nào đó lấy url ảnh hiển thị ở trang của họ thì k được phép để tránh mất bằng thông
+
+VD:
+RewriteEngine On
+
+#Các RewriteRule khác file, directory ...
+
+RewriteRule ^.*$ index.php [NC,L]
+=> Mọi truy vấn khác đều chạy file index.php
+
+VD: 
+RewriteEngine On
+
+# ...
+
+RewriteCond %{REQUEST_URI}::$1 ^(/.+)/(.*)::\2$
+RewriteRule ^(.*) - [E=BASE:%1]
+RewriteRule ^(.*)$ %{ENV:BASE}/index.php [L]

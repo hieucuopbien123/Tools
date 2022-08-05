@@ -1,0 +1,90 @@
+Thực tế NodeJS kp là lập trình front-end hay backend gì cả mà là do package của nó quyết định. VD package express giúp lập trình server, còn lệnh node file.js thực chất là lệnh chạy file js bình thường. Tức nói backend làm bằng NodeJS thực tế là dùng các package server của NodeJS để tạo backend cho website. Tương tự react cũng chỉ là 1 package của NodeJS để tạo front-end. Khi lập trình backend của NodeJS ta có thể viết ra các file front-end html, css và config cho server gửi lại các file này khi request cái gì. Thì các file đó thực chất là front-end luôn tức là lập trình front-end và backend cùng lúc luôn. Khi đó họ gọi là website nodejs. Nhưng trong thực tế ít các website nodejs mà người ta tách riêng lập trình front-end ra 1 package phổ biến là create-react-app. Còn server trên NodeJS chỉ lo các vấn đề về logic data và database mà thôi. Do đó 1 trang web react ta có thể coi nó là 1 trang web nodejs được vì cx từ 1 package nodejs mà ra.
+
+Khi ta muốn mọi người thấy trang web của ta thì phải deploy code lên mạng. Vc publish 1 trang web tối thiểu cần những cái gì.
+Ta hiểu React để viết giao diện tương tác API với NodeJS Express xử lý logic với database qua 1 port nào đó nhưng kể cả có NodeJS và React và SQL Server đi chăng nữa, các cái đó k thể giúp ta public lên mạng được mà bắt buộc phải thông qua 1 hình thức là hosting. Ta kbh publish được website nếu k hosting
+
+Vc ta chạy ở local và vào các thiết bị khác cùng mạng vẫn truy cập được trang web khi trỏ đến đúng địa chỉ ip và port tức là ta đang sử dụng local. Publish là khiến cho những thiết bị kp local cũng truy cập vào được.
+
+Vc ta xử lý địa chỉ router của cục wifi và cấu hình cho máy tính của ta thành 1 public server cũng là 1 cách hosting. Vc hosting này là thủ công hoàn toàn và thuộc dạng server riêng. Tuy nhiên máy tính của ta kp là 1 thiết bị chuyên dụng cho server nên k đúng lắm
+Khi hosting ta đương nhiên phải kiếm 1 tên miền DNS và chứng chỉ SSL cho trang web nhưng điều đó ta k xét ở đây
+
+Express của Nodejs là code phía backend server, ta có thể code logic bình thường thì là đủ rồi nhưng trong các ứng dụng lớn họ dùng kèm nginx để làm cân bằng tải thay vì chỉ nodejs lập trình đơn luồng hướng sự kiện 
+Nếu chỉ dùng apache và nginx không thì website vẫn hoạt động nhưng người dùng sẽ chỉ nhận được file tĩnh vì code frontend ra file tĩnh html. 
+=> NodeJS lo logic động phía server và dùng thêm nginx để chịu tải vì client gửi request tới thì nginx sẽ bắt trước, xử lý chịu tải rồi gửi cho server NodeJS. Nginx lo vai trò chịu tải ở đây vì nó có thể chịu hàng ngàn request cùng lúc.
+Có NodeJS không mà k có nginx vẫn chạy được bình thường, còn có nginx mà k có server NodeJS thì chỉ chạy được web tĩnh dù cấu hình như nào đi chăng nx. Vì kể cả nginx cho phép chuyển hướng trang theo url nhưng k thể connect với database được và mọi thứ user làm sẽ refresh khi F5. Web tĩnh tức là trang web sẽ hiển thị tĩnh cho người dùng và hoàn toàn k có tương tác kiểu bình luận comment gì vì bản chất nó k có web server, k có file node.js phía server để xử lý logic.
+Chú ý phân biệt vói React Router. Khi ta dùng react router sẽ đổi url nhưng thực chất vãn ở single page đó chỉ là các component render khác mà thôi. Tức là nếu k có file server mà có react router trong đó thì vc chuyển trang vẫn chỉ là 1 web tĩnh.
+Người ta còn dùng cloudflare để chống DDOS -> thấy ở tab Network của website
+Ta thấy file nginx config ở trong dự án react thực chất nó dùng phía server
+
+Có loại server xử lý request mọi thứ từ user và trả lại file html tương ứng, có server chỉ trả ra data thông qua request API để các ứng dụng khác lấy API
+
+
+Tổng kết: 
+React start và build, NodeJS backend Express, SQL Server, DBMS, PM2, Nginx, certbot, serve, VPS, docker, react router, docker, Apache, cloudflare, firebase, server vật lý host, hosting free online, reverse proxy, load balancer
+
+
+Mô hình 1:
+Client Browser -> hosting[Load Balancer Nginx -> NodeJS Express Server -> Database(SSMS -> SQL Server)]
+
+Mô hình 2: 
+Client Browser --SSL--> VPS[Nginx -> PM2 -> Serve{HTML, CSS, JS, IMAGE}]
+
+Mô hình 3:
+Client Browser -> Nginx reverse proxy -> apache <--HTML--> [PHP <-> Database Server]
+                    |
+                    v
+                   Static content
+
+Mô hình tối thiểu web tĩnh thì chỉ có: Browser -> Hosting[Nginx webserver -> file tĩnh setup trong nginx]
+Mô hình tối thiểu web bth thì là mô hình 1. Tuy nhiên trong thực tế, nó sinh ra lắm thứ thêm thắt thay đổi, chia tách hay gộp lại khiến cho nhiều loại mô hình ra đời rất rối rắm, khi đó ta cần xác định các thứ tối thiểu như mô hình 1 là đủ để chạy web, các thứ khác thêm thắt chỉ là để biết nó chạy cái gì.
+=>  4 thứ tối thiểu của web động là:
+Phương tiện hosting: trong các mô hình thì nó thường bỏ đi cái này nhưng ta phải luôn hiểu là 1 website chỉ có thể publish khi được host. 1 website mà k có hosting thì luôn chỉ truy cập được ở nhiều thiết bị trên local network. Dù mô hình có thay đổi như nào thì hosting kbh được thiểu
+Front end file giao diện: luôn có, đổi khi dự án NodeJS thậm chí có file html trong nó k tách riêng ra làm 1 dự án React riêng đâu. Khi đó dù chỉ có file html ngay trong server nhưng chính nó cũng gọi là front end. Còn tách riêng ra dự án react trong các dự án lớn thì máy lại phải mở 1 cổng cung các file front end để backend vào lấy
+Server: xử lý logic tối thiểu của 1 web động. Cái này có thẻ là Express của NodeJS để xử lý logic cho request gửi đến và thao tác với database.
+Database: Nó có thể tách riêng như SQL Server or dùng ez 1 file json trong NodeJS file tùy hệ thống lớn nhỏ. 
+=> Nếu là web tĩnh thì tối thiểu cần 2 thứ:
+Phương tiện hosting: VD như hosting online, VPS
+File front end: react or file html nào đó cx đc
+
+=> Nếu ta gặp tính huống người ta làm 1 ứng dụng react xong host online lên public luôn thì nó là web tĩnh hay động. Nó vẫn có thể là web động vì server nó tách riêng ra 1 chỗ khác và chỉ cung API cho website chứ k cung file html gì cả. Khi đó trang web react thao tác với API và host online lên phát là đã có thể tương tác với server rồi thì là 1 web động. Tức là nó ẩn đi việc ta code server và database chứ thực chất ở đây vẫn có đủ 4 thành phần tối thiểu của web động
+
+Mô hình từ trên xuống:
+Client Browser có thể gửi request tới 1 địa chỉ bất kỳ
+
+SSL chứng chỉ có thể self sign or mua or tạo ra bằng các phần mềm như certbot.
+
+Hosting:
+Dùng VPS có thể mua or đăng ký miễn phí bị giới hạn. VD: Google Cloud Plarform, AVA VPS,..
+Shared Host
+Hosting online VD firebase
+Hosting bằng cloud trả phí or free như heroku, Google Cloud, AWS Amazon,..
+Hosting bằng server vật lý riêng or dùng laptop cá nhân cấu hình router cục wifi. Khi đó phải cấu hình có thể dùng nginx or apache để cấu hình host. Phải có static IP address. Phân bố nhiều nơi trên thế giới khi lưu lượng truy cập cao từ nhiều quốc gia
+=> cũng phải kiếm 1 tên miền free. Hosting qua VPS bình thường sẽ nhận được tài khoản mật khẩu và phải tạo liên kết SSH gì đó. Cũng có các hosting có sẵn cho nền tảng như Wordpress cũng cung sẵn chứng chỉ SSL.
+
+PM2 là package giúp khởi động lại dự án khi VPS bị restart hay app bị crash, dùng khi hosting bằng VPS trong dự án NodeJS
+
+Load Balancer là cân bằng tải phân chia request đến các server khác nhau tùy lưu lượng request. Nginx có thể làm load balancer
+
+Reverse Proxy nhận yêu cầu máy khách và chuyển lên server cũng như gửi phản hồi từ server tới client. Nginx có thể làm reverse proxy
+(Còn có Forward Proxy,..)
+
+Webserver lo xử lý logic request của client, tương tác với server database, api. Như Apache chỉ xử lý http request, NodeJS làm cả thao tác với database. Đương nhiên là Apache k tương tác với database nhưng ta vẫn có thể kết nối hệ thống với database VD sử dụng khối PHP chứ kp k tương tác là kbh tương tác
+
+PHP thường dùng khi dùng apache làm webserver thì khối này sẽ lấy dữ liệu từ database server và gửi lại dạng HTML. PHP Handler phải xử lý hết
+
+DBMS cái giúp tương tác với database server như SSMS
+
+Database Server lưu data thực tế trên máy vật lý như SQL Server
+
+
+=> Có nhiều thứ khác như DNS Server, CDN Server, Service khác,.. trong quá trình hoạt động nó cũng đi qua nhưng ta k cần thao tác với nó nên k nhắc tới ở đây
+Docker k liên quan chỉ là thứ giúp chạy trên nền tảng bất kỳ. VD đang dùng máy win mà muốn ứng dụng như chạy trên Linux thì tải image linux của nó về và dùng các tool ngay trên container của image đó
+Còn có các tool khác như Serve để chạy client local ở 1 cổng, nơi mà nếu gửi request đến cổng đó thì nó sẽ trả về file html tương ứng của dự án thay vì bắt request và gửi lại file gì thì ta forward đến cổng đó
+
+Ta biết hosting website là phải đưa cái đống file của ta lên 1 host nào đó.
+Virtual Host là cách dùng nhiều địa chỉ domain trên 1 IP Server duy nhất. Thông dụng vì 1 server có thể có nhiều domain mà ô nào cũng chung 1 ip thì hỏng. Dùng Virtual Host sẽ chia nhiều domain đường link khác nhau để người dùng vào các web khác nhau cùng host bởi server chạy nginx
+
+Điều này cũng có nghĩa ta có thể dùng VPS host 1 web nodejs or 1 web react tĩnh ok hết
+Thông thường công ty có server riêng. Họ tách riêng dự án React và NodeJS và tương tác 2 cái đó với nhau ở mạng local luôn với IP và Port nào và cái React sẽ host ra ngoài thông qua server vật lý
+
+Ngoài ra còn PP Hosting bằng App Engine Standard Env dùng cloud nhanh gọn và easy atuto-scalable. 

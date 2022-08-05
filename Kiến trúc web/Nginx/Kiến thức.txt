@@ -1,0 +1,36 @@
+Nginx là 1 web server nổi tiếng thứ 2 sau Apache. Mã nguồn mở, hướng đến cải thiện tối đa hiệu năng và sự ổn định. Nó có thể làm nhiều hơn 1 máy chủ bình thường như Proxy server(cho IMAP, POP3, SMTP), reverse proxy, load balancer cho các máy chủ(TCP, UDP, HTTP).
+
+Các web server khác như Google Server, IIS,..
+
+Reverse Proxy là cầu nối giữa client và server. Nó nhận yêu cầu máy khách và chuyển lên server cũng như gửi phản hồi từ server tới client => phản hồi từ Reverse proxy giống như là 1 máy chủ.
+Nginx reverse proxy: bảo mật cao, chặn DDoS, cân bằng tải giữa nhiều server, xử lý 10000 kết nối nhưng chiếm ít bộ nhớ, hoạt động như reverse proxy cho các giao thức HTTP HTTPS TCP UDP SMTP IMAP POP3, vận hành nhiều web server khác nhau từ 1 IP, cache nội dung để mã hóa SSL giảm tải cho server tĩnh, test A/B mà k cần cài code JS vào trang
+
+web service là tập hợp các giao thức trao đổi dữ liệu trong Th như VD: các phần mềm viết bằng các ngôn ngữ lập trình khác nhau, chạy trên nền tảng khác nhau có thể sử dụng các dịch vụ web để trao đổi dữ liệu qua mạng máy tinh theo cách tương tự như các tiến trình trong máy tính liên lạc với nhau. 
+Có 2 loại web service: SOAP và RESTful
+
+NGINX k tạo process cho mỗi yêu cầu mà nó xử lý hướng sự kiện, không đồng bộ mà các yêu cầu xử lý trong cùng 1 luồng. Khác với Apache cấu hình kiểu "prefork" thì mỗi request kể cả hình ảnh hay file.txt đều nằm trên 1 process riêng thì tốn nhiều tài nguyên hệ thống. Còn NGINX thì 1 process có thể xử lý nhiều request liên tục dựa vào lượng tài nguyên còn lại của hệ thống. Mọi yêu cầu được process riêng của NGINX thực hiện và trả lại data qua reverse proxy. 
+Những file tĩnh như txt, css, hình ảnh thì NGINX sẽ trả dữ liệu mà không cần các module server side can thiệp nên tốc độ tăng.
+
+Apache chỉ nhận 1 lượng request đã xác định và loại bỏ số còn lại trong khi NGINX cố gắng hết khả năng để k bỏ qua 1 request nào. Nó có thể chịu được số lượng user lớn truy xuất đến file tĩnh or động 1 thời điểm nhanh hơn là Apache và load file tĩnh nhanh hơn. Đương nhiên điều này độc lập với tốc độ mạng internet của người dùng
+
+Các threads tương đồng nhau cùng được quản lý trong process. Tức là mỗi process gồm nhiều worker nhỏ hơn và Workder Connections sẽ xử lý tât cả thread đó, nó gửi đến Master Process -> Worker Process xử lý request
+
+NGINX thường chạy khi trang web có lưu lượng truy cập cao với nhiều nội dung tĩnh. 
+NGINX có thể dùng kết hợp với Apache bằng cách dùng nó như 1 server proxy đứng trước Apache để tận dụng lợi thế xử lý nhanh, thiết lập kết nối số lượng lớn đồng thời
+Client <--> Front-end <--> Backend(Php,..) - Apache
+                      <--> Static content(txt, js, css, images, video,..) - NGINX
+
+Cloudflare có thể dùng như 1 reverse proxy cho trang web, kết nối nó với server NGINX của ta để dùng.
+
+Cách cài tương tự: download NGINX trên Mainline -> giải nén vào ổ C -> vào chạy file nginx.exe -> mở browser localhost
+Tùy chỉnh file config, nó có các comment và config có sẵn có thể dùng rất dễ hiểu, thay đổi file hiển thị đầu tiên
+
+Cơ chế hướng sự kiện xử lý đơn luồng async là mấu chốt mà Nginx giúp giải quyết vấn đề C10K. Khi khởi chạy thì nginx chỉ chạy 1 tiến trình duy nhất gọi là master process. Nó sinh ra các tiến trình con và các tiến trình con mới là thứ xử lý request của user. Để định nghĩa các worker process, ta phải thao tác với tệp config.
+
+Web server là phần mềm phục vụ web. Tât cả các web server tối thiểu đều phải hiểu và chạy được các file html và htm. Tuy nhiên mỗi web server lại phục vụ cho 1 số kiểu file chuyên biệt như Apache, Nginx chuyên php; IIS của Microsoft dành cho asp, aspx; Sun Java system dành cho jsp
+Khi có request, web server sẽ tải 1 tệp từ đĩa lên mạng
+
+Web server cũng chỉ là 1 máy tính chạy phần mầm web server này thôi. Nhờ có nó mà máy tính này giao tiếp được với máy tính khác thông qua HTTP. Mở rộng thêm thì kết nối với database và thao tác với nó. Vị trí đặt server cũng ảnh hưởng đến tốc độ. Để cấu hình còn phải xem xét router, gateway, mạng ta như nào chứ kp cứ có phần mềm chạy web server là public ra ngoài được
+
+nginx sau khi click đúp vào nginx.exe là nó đã chạy r -> vào local host là thấy, muốn tắt thì mở ctrl shift escape để end task
+Chạy react với nginx -> npm run build r lấy nó nhét vào nginx html r chạy nginx như bth

@@ -1,0 +1,34 @@
+Mô hình cơ bản ít người dùng mở rộng dần:
+Database <-> Server <-> Client
+=> Dùng Rate Limit giới hạn request 1 user để tránh 1 ip bắn request bừa bãi
+=> Để các file tĩnh trong cùng server database sẽ die server vì file tĩnh được request nhiều bởi nhiều người dùng, để riêng 1 con server khác cũng có thể chết con server đó. Ta có thể dùng dịch vụ lưu trữ đám mây gọi là BLOB storage như Azure Blob storage, AMZ S3. Và có thể dùng 1 dịch vụ CDN như Cloudflare, Google Cloud CDN để giảm tải
+=> Chạy được file tĩnh nhưng API vẫn treo nếu nhiều người dùng. Nâng cấp theo chiều dọc tăng RAM CPU DISK nhưng kp giải pháp vĩnh viễn. Ta có thể nâng cấp ngang bằng cách thêm các máy chủ khác nhau. Nhưng ta muốn request đến 1 IP duy nhất nên dùng Load Balancer ở mức DNS. Nhưng hệ thống chưa quá to thì k cần đến mức đấy mà chỉ cần 1 ReverseProxy
+Forward Proxy là cái trong 1 tổ chức ta điền vào để vào mạng như mạng ở trường bách khoa ấy: học sinh -> proxy -> internet
+Reverse Proxy là cái để mọi người bên ngoài vào hệ thống của ta: customer -> internet -> Reverse Proxy(<-) -> server của ta. Nên nhớ Reverse Proxy phân phối request người dùng về server của ta và cũng chịu trách nhiệm forward tiếp reponse từ server lại cho customer.
+Ta thêm vài con máy chủ và 1 con reverse proxy để:
+client -> call APIs -> Reverse Proxy -> API Server 1 -> Database
+  ^                                  \> API Server 2 /^
+  |
+Cloudflare <- Static content BLOB Storage
+=> Nút cổ chai là database vì vẫn có nhiều request vào dữ liệu ít thay đổi mà lại hay được truy vấn. Ta dùng hệ thống cache. 
+Có 2 loại cache là In-Memory Cache và Distribution Cache ngoài ra có thể tạo cache trên client or tạo bảng cache trên DB.
+=> Với In-Memory Cache ta cache ngay trên RAM của các API Server. Nhưng nhiều cache có thể gây hết RAM và cần các giải pháp xóa cache lâu không dùng như: LRU(Least Recent Use) hoặc FIFO, LFU(Least Frequently Use)
+=> Vì kp ai cũng request như nhau nên đọc k có thì tìm trong DB, tìm được lại lưu vào cache. Tìm có dữ liệu trong cache là cache HIT, k có thì là cache MISS.
+=> Ta cache trên từng server nên nếu ban đầu client gọi vào server A được cache nhưng về sau Reverse Proxy gọi vào server B k được cache lại mất tg. Ta phải dùng Hash thay vì các cách khác như Round Robin. Nhưng dùng thuật toán Hash đồng nghĩa 1 IP luôn request vào 1 server nhưng nếu server đó chết thì Reverse Proxy vẫn chỉ cho IP đó vào server cũ thôi, tương tự thêm server mới thì chả connect được. Họ fix bằng thuật toán Consistent Hashing or Rendezvous để đảm bảo mỗi client trỏ đến đúng server và k bị ảnh hưởng bởi vc thêm xóa 1 server. 
+=> Với PP cache thứ 2 là Distribution Cache lưu cache ở server khác không lưu trên server API của mình. Khi đó tốn đường truyền vì dùng 1 server riêng để làm cache server và nếu server đó sập thì hệ thống cache cx đi. Nhưng ta có thể replica để cho nó tính khả dụng cao. Ưu điểm là cache tập trung lại 1 server thì việc cập nhập cache cũng dễ dàng hơn. Và nếu ta restart server API thì cache k bị mất còn In-Memory sẽ mất hết.
+=> Kết hợp tạo cache nhiều tầng, memory MISS thì tìm distribution cache, distribution MISS thì lấy trong database
+Client --Call APIs--> Reverse Proxy     -> API Servers 1(In-mem cache) -> Redis Cluster, Database
+  ^                (Rendezvous Hashing) \> API Servers 2(In-mem cache) /^
+  |
+Cloudflare <- Static content BLOB Storage
+=> Cache k thể xử lý hết 1 lượng database quá lớn hàng triệu người. Nếu xem nhiều mà ghi ít thì ta có thể chia mô hình master-slave:
+          Web server
+          /^  ^|  ^\
+         /    ||    \
+        /     |v     \
+    slave1 <-master-> slave2
+Đọc và ghi với master, chỉ đọc với các slave và 3 cái database đồng bộ với nhau. Do đọc nhiều hơn ghi nên dùng như v để giảm tải cho database chỉ đọc bằng cách chia ra nhiều database
+=> Nếu dữ liệu mà lớn thì truy vấn của người dùng vẫn lâu. Ta fix với Sharding bằng cách chia dữ liệu nhiều phần rồi lưu ở các database khác nhau và dựa vào bảng shard để quyết định vào đâu lấy dữ liệu. VD: bảng user mà client request. Ta có thể chia ra theo chữ cái đầu của username. VD A lưu vào database A, B lưu vào database B. Lúc cần request user nào dựa vào bảng shard và ta chỉ tìm trong database tương ứng mà bây giờ số lượng dữ liệu trên mỗi database sẽ giảm và truy vấn nhanh hơn:
+122334556(Partition) -> 122(shard1) / 334(shard2) / 556(shard3)
+=> Nếu những người tên bắt đầu bằng A, Ư, Ơ thì sẽ có cái được chọc nhiều, cái chọc ít(Celebrity Problem). Thực tế họ sẽ k dựa vào chữ cái đầu mà dùng hàm băm cho cân bằng nhưng kiểu gì cũng sẽ có chỗ nhiều chỗ ít(chỗ nhiều gọi là hotspot), lúc đó phải sửa hàm, sửa bảng shard hoặc tăng cấu hình cho con shard trâu kia. 
+=> Dữ liệu nằm trên các server khác nhau thì join ntn? Ta có thể lưu dư thừa dữ liệu trong các DB shard để đỡ phải join và cập nhập dữ liệu master DB bằng 1 worker. Tức là cái shard ta chia ra chỉ để đọc nhanh còn dữ liệu chuẩn vẫn nằm trên 1 DB master. DB master gọi là Single Source of Truth(SSoT) đảm bảo cho các dữ liệu shard kia chủ yếu để đọc. Sharding như 1 giải pháp đọc nhanh hơn 1 lượng dữ liệu cực lớn mà cache k thể xử lý được.

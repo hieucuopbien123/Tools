@@ -1,0 +1,48 @@
+Hệ thống nhỏ: các trang tin tức, các dự án chỉ truyền tải nội dung đi
+Client là Browser gửi request tới server. Bên trong server có webserver database luôn, cái server lớn đó sẽ xử lý hết công việc từ trình duyệt yêu cầu và gửi lại response.
+
+Hệ thống trung bình: dự án công ty hay web bán hàng
+Tương tự như hệ thống nhỏ nhưng webserver và database được tách ra làm 2 phần riêng biệt: webserver xử lý yêu cầu server với ngôn ngữ như Java, PHP,.. và framework như Laravel,.. xử lý logic luôn; Database server dùng để chứa dữ liệu
+Nó tách ra là vì tính toàn vẹn dữ liệu và giảm tải cho máy chủ. VD hacker mà phá được máy chủ thì cx đi luôn database không.
+
+Hệ thống lớn: facebook, tiki, các dự án có số người truy cập lớn.
+Hệ thống tầm trên mà gặp 1 triệu người dùng vào 1 lúc thì bốc cức. Có thể dùng vertical scaling tức tăng RAM, ổ cứng, thay CPU.
+Horizontal scaling là dùng LoadBalancer(cân bằng tải)
+Ta tăng số lượng webserver lên và dùng cân bằng tải để điều chỉnh request đến server nào để giảm tải ở 1 server và 1 server chết thì hệ thống vẫn hoạt động:
+Request of Client -> Load Balancer -> phân chia đến nhiều webserver khác nhau ---lấy tiếp từ---> 1 Database
+=> Vẫn chưa ổn vì ứng dụng lớn thì database sẽ phình to ra và 1 lúc nhiều request cùng gọi vào database server cx k ổn. Ta có thể fix bằng cách tăng số lượng database lên. Cách dùng nhiều database:
+TH1: đọc nhiều ghi ít => kiến trúc master/slave
+Webserver <--đọc-- slave1
+          --viết--> master
+          <--đọc-- slave2
+-> database master được connect đồng bộ với 2 database slave
+=> tức là việc đọc được chia ra cho 3 database server khác nhau để xử lý còn ghi ít thì 1 database master xử lý thôi và đồng bộ với 2 con
+TH2: đọc nhiều ghi nhiều(các tính năng comment, chat,..) -> Sharding Database
+Đây là 1 phương pháp chia nhỏ theo vùng miền tức người việt nam truy cập đến database ở VN, Mỹ truy cập đến database ở Mỹ thôi
+
+Nginx chẳng hạn có thể dùng làm webserver, cũng có thể dùng nó làm LoadBalancer
+
+Bức tranh tổng quan:
+ Browser <--> LoadBalancer <--> Web Server <--> Database server
+ ^  ^                            ^  ^  ^
+ |  |                            |  |  |
+ |  v                            |  |  v
+ v CDN(Content Delivery Network) |  v Service(api,aws,dịch vụ ngoài,..)
+DNS(Domain Name System)          v Job Server
+                                Caching Service(Redis, Memcache)
+
+CDN: mạng lưới nội dung tĩnh trên các server đặt khắp nơi để request của user tự tìm đến máy chủ chứa nội dung gần nhất thay vì tìm đến máy chủ gốc
+Caching Service: lưu kết quả hay data trong RAM, ít bị thay đổi tăng trải nghiệm người dùng chứ k lưu vào database để lấy
+JobServer: thực hiện tác vụ bất đồng bộ (gửi tin, tải video, import CSV)
+Web
+
+Thông thường: NodeJS làm webserver, nginx làm loadbalancer, SSMS SQL làm database server là xong 1 cấu trúc web hoàn chỉnh hệ thống khá lớn có chịu tải rồi.
+
+Ta đang nói tới mô hình web động còn web tĩnh thì:
+Browser <--> Webserver là xong vì chỉ cần xử lý request user là gửi lại file html nào chứ k cần xử lý database hay dịch vụ gì khác. VD dùng 1 apache gửi file html là xong rồi k cần làm gì khác
+
+Kiến trúc client-server nằm ở đâu trong các hệ thống trên: phải pb được nginx với nodejs khác nhau. 1 cái web nodejs, 1 cái web react thuần
+
+PHP có thể dùng làm ngôn ngữ code giao diện front-end, mà webserver khi nhận được request php sẽ chạy qua module chuyển php thành html và gửi lại cho client. PHP có thể dùng làm ngôn ngữ webserver backend như vai trò của NodeJS. Tương tự cái éo gì r cũng về html để browser hiển thị
+
+Nhiều lúc cái khái niệm web server k rõ ràng, có thể nó coi cái apache, iis là webserver và cái PHP chỉ là middleware connect webserver với database server MySQL. Hiểu thế nào miễn rõ bản chất là được.

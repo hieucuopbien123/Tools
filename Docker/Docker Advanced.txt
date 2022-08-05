@@ -1,0 +1,58 @@
+Dùng docker compose tạo ra 3 dịch vụ của ứng dụng là mysql, httpd, php. Đồng thời 3 dịch vụ tạo ra 1 network và ổ đĩa để chia sẻ dữ liệu
+File docker compose có định dạng .yml: yml lưu dữ liệu dạng key val. Tuân thủ đúng từng dấu cách dòng. Dockerfile kêt hợp với docker build chỉ để tạo ra 1 images trong khi docker compose tạo hẳn 1 app có đầy đủ dịch vụ nhiều images cx đc.
+Ta sẽ xây 1 ứng dụng có 3 dịch vụ:
+container php-product chạy từ image PHP:7.3-fpm trên cổng 9000 cài mysqli, pdo_mysql và thư mục làm việc: /home/sites/site1
+container c-httpd01 chạy từ container httpd của apache trên cổng 80 và 443, ta có sửa file config của nó gọi đến php-product khi dùng file.php và thư mục làm việc là /home/sites/site1
+container mysql-product chạy cổng 3304 và chỉnh file config dùng authentication kiểu cũ, có ánh xạ database, có password, và tạo ra user siteuser mk là sitepass, database riêng db_site để thao tác
+Ứng dụng có dùng chung 1 network nat có tên my-network và ổ đĩa có tên dir-site đồng bộ dữ liệu trên máy host là /dockercompose/source/
+Ứng dụng là webserver có 3 dịch vụ như v sẽ chạy được website bằng wordpress trên hệ thống này mặc định hiện ra index.html -> ở đây ta dùng joomla thay thế wordpress
+
+Cơ chế: tạo file docker-compose.yml bên trong có khởi tạo 3 dịch vụ là 3 container bên trên. Khác với Dockerfile chỉ để tạo 1 container 1 dịch vụ thì docker-compose tạo 1 phát bao nhiêu cũng được. Và sau cùng chạy file docker-compose bằng lệnh docker-compose là xong
+
+Tạo docker file cho php vì nên chia ra mỗi service 1 docker file cho hay:
+  docker-php-ext-install mysqli pdo_mysql
+Trích xuất file httpd.conf của httpd ra và sửa là dùng container php-product khi gặp .php, sửa thư mục mặc định nx(đã biêt): 
+  /usr/local/apache2/conf/httpd.conf
+  AddHandler "proxy:fcgi://<tên container php fpm>:9000" .php
+Tương tự trích xuất my.cnf của mysql và chỉnh authentication-> tạo thư mục lưu database:
+  /etc/mysql/my.cnf
+  default-authentication-plugin=mysql_native_password
+  /var/lib/mysql
+Tạo docker-compose.yml -> cái version éo hiểu sao lỗi xóa đi thì ok
+docker-compose up -> tự chạy các lệnh trong file có tên docker-compose.yml-> phải ở cùng cấp thư mục chứa file đó -> mở cổng 9999 sẽ thấy dịch vụ -> tải mã nguồn joomla về-> giải nén và nhét vào source/sites1 -> mở web và cài đặt như wordpress thôi -> làm theo hướng dân của loomja là xong -> login tk admin
+
+docker-compose down -> xóa các thành phần chạy bằng docker-compose up
+docker-compose ps -> hiện container chạy bằng lệnh up
+docker-compose ps --service -> hiện các service của docker
+docker-compose stop -> dừng nhưng k xóa
+docker-compose start -> chạy cái docker-compose đã stop
+docker-compose restart
+docker-compose images -> docker đang chạy được tạo ra từ những images nào
+docker-compose exec my-php bash -> tên container đang chạy bởi docker-compose và tên lệnh muốn chạy trên container đó
+docker-compose logs <tên các container chạy bằng docker-compose, nếu k có sẽ đọc logs ở mọi dịch vụ đang chạy>
+
+
+Chạy hệ quản trị SQL server 2017 của microsoft trên linux bằng docker:
+docker pull mcr.microsoft.com/mssql/server:2017-latest
+Mặc định nó có user quản trị là 'sa' và cổng kết nối là 1433. Database lưu tại: /var/opt/mssql. Khi chạy container để thiết lập biến môi trường cho tk quản trị thì là SA_PASSWORD=..., ta cũng phải chấp nhận điều khoản người dùng cuối khi chạy container là ACCEPT_EULA=Y
+Công cụ kết nối vào sql server là sqlcmd(/opt/mssql-tools/bin/sqlcmd) giúp tương tác với server ngay tại container với cú pháp "sqlcmd -S host -U user -P password"
+Chạy nó cần rất nhiều bộ nhớ, k đủ sẽ lỗi
+
+Tạo ổ đĩa ánh xạ vào sql server: docker volume create mssql -> docker run -it --name sqlserver -p 1433:1433 -v mssql:/var/opt/mssql -e SA_PASSWORD=1234 -e ACCEPT_EULA=Y <id image>
+Tương tác trong terminal sqlserver: cd /opt/mssql-tools/bin/ -> ./sqlcmd -S localhost -U SA -P 1234 (cái -S localhost thì k có cũng đc) -> thao tác: select name from master.dbo.sysdatabase -> go -> create database abc -> go
+
+SQL Management Studio chỉ có trên window, nhưng Azure Data Studio có trên cả 3 hđh có thể dùng thay thế SSMS -> vào azure -> ta có thể kết nối với database trong sql server trên docker vừa tạo-> nhập vào tên server localhost, đăng nhập vào-> connect -> tạo query,...
+
+
+Dùng Haproxy làm server cân bằng tải cho docker => yêu cầu gửi tới Haproxy trước r nó chuyển hướng tới server thích hợp
+docker pull haproxy
+file cấu hình ở /etc/haproxy/haproxy.cfg -> tạo nó và ánh xạ vào container. Ta sẽ tạo file kiểu có 2 khối front-end:
+-Yêu cầu gửi tới cổng 80 thì khối front-end http-in xử lý và gửi tới 2 server backend. Nếu testhaproxy1.com thì gửi khối 1 có 1 server yahoo.com xử lý. Nếu là testhaproxy2.com thì gửi tới khối 2 có 3 server google.com, bing.com, wikipedia.org xử lý
+-Yêu cầu gửi tới cổng 443 thì khối front-end https-in xử lý và testhaproxy1/2 đều gửi tới khối 3 có 1 server xử lý
+-> chạy container haproxy sử dụng file config: docker run -v C:/Users/Admin/Desktop/haproxy:/usr/local/etc/haproxy -p 8080:80 -p 443:443 haproxy:latest
+=> window lại éo chạy được. lỗi file config k tồn tại, lùi phiên bản cũ chắc đc
+
+=> sau khi chạy nếu như ta truy cập vào cổng 8080 or 443 với host là testhaproxy1/2.com thì haproxy sẽ bắt và thực hiện chuyển hướng. Tuy nhiên host của ta đang mặc định là localhost. Ta có thể đổi host bằng cách vào file host: ở win thì C:/Windows/System32/Drivers/etc/hosts còn MAC và Linux ở /etc/hosts -> ta vào đó và thêm 2 tên miền ảo trỏ tới cái host của ta là:
+127.0.0.1 testhaproxy1.com
+127.0.0.1 testhaproxy2.com
+=> bh ta vào testhaproxy1.com:8080 là haproxy thấy có request cổng 80 và tên host trùng testhaproxy1 sẽ gửi tới backend tương ứng và do ta chọn roundrobin nên mỗi lần refresh sẽ quay vòng các trang yahoo, google, bing
