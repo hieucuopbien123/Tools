@@ -1,0 +1,10 @@
+WSL chính là ứng dụng ubuntu trên window. Phiên bản WSL2 của window mới là phiên bản chuẩn giống linux nhất, dùng sẽ k còn bị lỗi linh tinh. Cần phải cài window phiên bản chuẩn dùng được microsoft store mới tải và dùng được.
+
+Ở phiên bản WSL2 cho phép ta dùng kết hợp trong rất nhiều ứng dụng của MS như VSC hay docker hoàn thiện hơn rất nhiều so với phiên bản trước và tốt hơn HyperV nhiều.
+Để cài WSL2 có phải cài wsl là thứ để cài các phiên bản distribution của nhiều loại OS, sau đó ta phải tải tiếp từ WSL các distribution của OS muốn sử dụng VD ubuntu, sau đó nâng cấp các distribution dùng WSL2. Máy muốn dùng được WSL2 phải enable virtualization.
+Dù máy dùng bios mode UEFI hay legacy thì đều phải vào setup bios của máy tính khi khởi động chẳng hạn để enable virtualization technology. 
+
+Dùng docker trên window sida vl. Dùng docker trên linux mà với hyperV thì k ổn, cách tốt nhất là dùng docker với WSL2. 
+Full cài docker - wsl2: https://xuanthulab.net/cai-dat-va-chay-docker-trong-wsl2-windows.html
+
+
