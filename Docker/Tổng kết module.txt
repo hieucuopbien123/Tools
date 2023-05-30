@@ -1,0 +1,10 @@
+Docker
+
+
+
+# Basic
+-> Setup cho window
+Cài wsl2
+Cài docker desktop cho window => thực tế chỉ dùng commandline, còn docker desktop GUI ít dùng
+
+

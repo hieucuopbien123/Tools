@@ -1,0 +1,77 @@
+Mở docker desktop ra và mở window shell để thao tác với docker qua command:
+docker network ls -> list ra các network trong docker. Docker có lệnh tạo và thao tác với hệ thống network giúp các container kết nối vào với nhau và kết nối ra bên ngoài. Nếu 1 container chạy bth kxđ network nó tự động vào default network đầu tiên trong list
+docker network inspect <tên network> -> xem thông tin network. Nhờ có các network mà bên trong các container linux chẳng hạn gọi được lệnh ping ra các trang web network bên ngoài. Lệnh này hiển thị các container trong network là gì và ip là bnh. 
+docker inspect <tên or id container> -> xem thông tin của container có cả network mà container này đang chạy trên
+docker run -it -e <tên biến môi trường>=<giá trị biến môi trường> --name "<tên>" --network <tên network> -p -8888:80 busybox -> chạy container với ánh xạ cổng 80 của nó thành cổng 8888 của host. Nếu k specific network sẽ dùng network đầu tiên.
+docker network create --driver bridge <tên network> -> tạo ra 1 mạng cầu trong hệ thống. Tạo ra nhiều network trong docker bên trong có nhiều container để cách ly container này với container mạng khác. VD ping sang container mạng khác sẽ k có gì
+docker network rm <tên network>
+docker network connect <tên network> <tên container> => kết nối network nào vào container nào đang chạy. 1 container có thể kết nối với 2 network 1 lúc được
+docker logs <tên container> => xem logs lỗi container
+
+Sau khi chạy container thì môi trường terminal chính là nơi ta có thể tương tác với container đó:
+Trong hệ thông network docker, 2 container cùng thuộc 1 network có thể tương tác với nhau và tương tác ra bên ngoài(nhưng bên ngoài chưa tương tác đc với chúng) -> có thể: ping <ip container khác ở trong network đó> => 2 container có thể trao đổi gói tin với nhau trong network đó
+ls /bin/ -la => phải trong container linux sẽ hiển thị mọi lệnh có trong container đó => inspect là thấy cái ipv4 liền
+cd var/www -> httpd -> khởi tạo máy chủ http trên container, nó đang lắng nghe request gửi đến ở cổng 80 của container này -> ở trong 1 container khác: wget -O -<địa chỉ ip của http server của container khác> -> nó sẽ gửi trả về nội dung bên trong server. Có thể tạo file index.html bên trong server thì wget sẽ biên dịch và hiển thị file html đó trên powershell luôn
+Tuy nhiên khi 1 container khởi tạo http server thì bên ngoài máy host k truy cập được server đó. Để làm được ta phải ánh xạ cổng 80 của container sang any cổng chưa dùng ở host
+Khi đã ánh xạ cổng 80 sang 8888 của host chẳng hạn: thì mở browser với 127.0.0.1:8888 sẽ hiện ra index.html
+Trên linux ta dùng bridge, trên window ta dùng nat
+echo $<tên biến môi trường>
+
+busybox là 1 images có sẵn của docker nhỏ gọn nhưng chứa nhiều công cụ nền tảng linux.
+Chú ý localhost luôn là 127.0.0.1 kết nối với các network thông qua NIC(network interface card) và connect vào các network rồi connect vào các container khác trong network có các ip khác cũng bắt đầu bằng 127.<a>.0.<b> -> nếu 2 container cùng thuộc 1 network sẽ có cùng giá trị a còn b tăng dần
+Khi 2 container thuộc cùng 1 network thì có thể gõ tên trực tiếp trong lệnh: VD trong container B3 ping đến B4 thay vì gõ ip của B4 ta chỉ cần: ping B4 là xong
+Khi dùng window container ở bất cứ đâu đều phải gõ đường dẫn tuyệt đối ra nếu k là sai
+
+
+Thực hành: Tạo network cầu tên www-net có 3 container chạy 3 dịch vụ mysql, php, httpd để tạo ra 1 web server hoàn chỉnh sau đó kết nối với wordpress trên hostOS
+=> docker network create --driver nat www-net 
+
+images php phiên bản 7.3-fpm: có fpm là FastCGI Process Manager có chức năng phiên dịch PHP khi chạy trang web cho webserver. Dịch vụ này lắng nghe và tạo ra nhiều tiến trình trên cổng 9000, bắt file.php
+=> docker pull php:7.3-fpm
+-> tạo thư mục /docker/www ánh xạ chia sẻ dữ liệu giữa các container và host và giữa các container với nhau
+-> docker run -d --name c-php -h php -v C:/Users/Admin/Desktop/docker:/home/docker/ --network www-net php:7.3-fpm => tham số -d sẽ chạy container trên background mà k hiển thị ra terminal của container đó ngay
+-> vào trong thư mục docker và thêm vào index.html và test.php thì cái container php này có thể chạy được file php bằng: php <tên file php> -> php --version
+-> xong container php trong network chạy được file php. Nó luôn lắng nghe file php tới trên cổng 9000(có thể đổi cổng trên docker desktop). Và ta muốn nếu có file php cần biên dịch thì http server phải gửi nó về cổng 9000 này. Container này dùng cổng 9000 của network rồi và bên ngoài host k cần dùng nên k cần ánh xạ cổng
+
+Dùng Apache httph là máy chủ http(GET, POST,.. đó)
+=> docker pull httpd để tải bản latest
+-> ta k thể run nó luôn được mà cần phải chỉnh config cho nó. Như chạy php như nào và thao tác với các file nào thì file config đó nằm trong thư mục /usr/local/apache2/conf/httpd.conf -> ta cần lấy file này ra để chỉnh sửa -> ý tưởng là chạy container lệnh copy ra 1 thư mục mà ánh xạ tới thư mục docker trên host để lấy ra ngoài host
+Lỗi: trong window container không dùng được lệnh cp với file mà chỉ dùng được với thư mục nên ta phải copy cả thư mục ra và chỉnh file conf bên trong thư mục. Còn phải thêm -r vào lệnh cp mới đc
+-> docker run --rm -v C:/Users/Admin/Desktop/docker/:/home/docker/ httpd cp -r /usr/local/apache2/conf /home/docker/conf => thực hiện 1 lệnh lấy thư mục đó ra host r xóa container luôn. Chú ý đường dẫn k có space, nếu window có thì phải lưu tạm vào đâu r copy ra
+-> sửa đổi file httpd.conf để mỗi khi chạy file php thì nó tự gọi php-fpm: ta phải nạp các module, uncomment các module mod_proxy.so -> thêm vào cuối file handler rằng mỗi khi gặp file đuôi .php thì sẽ gọi đến proxy redirect đến container c-php cổng 9000: AddHandler "proxy:fcgi://c-php:9000" .php -> thiết lập thư mục làm việc mặc định của nó chứa file index.html và php của ta-> chỉnh DocumentRoot và Directory
+-> tạo container từ image httpd thực sự, để dùng file config ta tạo ra rất đơn giản, chỉ cần ánh xạ file config đó là được thì container sẽ theo host: docker run --network www-net --name c-httpd -h httpd -p 9999:80 -p 443:443 -v C:/Users/Admin/Desktop/docker/:/home/docker -v C:/Users/Admin/Desktop/docker/conf:/usr/local/apache2/conf httpd -> máy chủ apache chạy trên cổng 9999 ánh xạ vào cổng 80 của apache còn 443 kệ nó cần dùng nhưng chưa dùng. Bh muốn gửi request đến apache từ host, ta gửi vào 9999 -> mở trình duyệt-> localhost:9999 -> gọi localhost:9999/test.php -> vì thư mục mặc định ta set là docker/www nên ta lấy được file này luôn và nó sẽ gọi đến c-php để chạy file(nhờ c-php ms chạy được .php)
+=> server chạy k được tắt đi
+
+Thông tin về configuration các images xem trong hub.docker.com VD mysql và httpd cần tới. Nhiều lúc để chạy container cần tới config mới được. Docker hay ở chỗ cái éo gì cx có và đơn giản nó lưu vào trong 1 thư mục nào đó và muốn lấy hay làm gì chỉ cần ánh xạ
+=> docker pull mysql
+-> mysql phiên bản mới nhất có thay đổi hệ thống login, ta muốn dùng phổ biến phiên bản login như cũ thì phải chỉnh sửa file config nhưng trong window ta copy cả thư mục: docker run --rm -v C:/Users/Admin/Desktop/docker/:/home/docker/ mysql cp -r /etc/mysql /home/docker/confmsql -> chỉnh my.cnf thêm vào cuối: default-authentication-plugin=mysql_native_password -> tạo thêm thư mục db lưu cơ sở dữ liệu của mysql vào mà ta sẽ ánh xạ ra từ container
+-> image này chú ý phải set khi chạy container với port 3306, root là password MYSQL_ROOT_PASSWORD, database lưu trong /var/lib/mysql cần ánh xạ để lấy ra ngoài trong TH xóa container thì vẫn còn
+-> docker run -e MYSQL_ROOT_PASSWORD=1234 -v C:/Users/Admin/Desktop/docker/confmsql:/etc/mysql -v C:/Users/Admin/Desktop/docker/db:/var/lib/mysql --network www-net --name c-mysql mysql
+=> Ở đây ta k ánh xạ cổng 3306 vì ta k có nhu cầu bên ngoài truy cập vào mysql mà chỉ cần các container trong cùng network truy cập vào database mà thôi thì cổng nó giữ nguyên là 3306 trong network. Nếu bên ngoài muốn thao tác các hàm SQL với database bên trong phải ánh xạ cổng
+=> database server đang chay k đc tắt đi
+Vào bash của c-mysql: 
+mysql -u root -p1234 -h <ip> => -p k có dâu cách sẽ điền pass luôn, có dấu cách thì điền k ai nhìn thấy, -u là user ở đây là root -> lệnh này sẽ connect từ container này vào sql server. tham số -h là kết nối vào địa chỉ ip container nào thì đang ở trong container này r nên k cần nx
+Vào bên trong sql server rồi => dùng các hàm ngôn ngữ SQL thôi:
+show database;
+use <tên database>;
+use tables;
+create user "a" identified by "pass"; => nhớ password user này và ta sẽ dùng nó cài đặt wordpress
+create database test;
+show databases;
+select User from user;
+exit;
+
+Hiện tại đã có dịch cụ c-php và c-httpd chia sẻ chung thư mục www và c-mysql lấy được database bất cứ lúc nào. Ta sẽ cài wordpress: xóa test.php và index.html k cần nx-> tải wordpress trên trang chủ-> giải nén lấy source -> copy toàn bộ vào www-> mở web localhost:9999 lên sẽ hiện ra danh sách file vì apache ta chưa cấu hình file mặc định mà index.html k có nên nó hiển thị tất cả các file trong thư mục luôn. Mở index.php -> ...
+Để set up database, ta cần có sẵn database ta sẽ lấy là mysql container có từ trc. Nhập vào mọi thứ. database host là ip của database nhưng nên nhớ trong docker khi cùng 1 network thì chỉ cần nhập tên nó cx tự hiểu là ip nên là c-mysql là xong.
+Khi xuất hiện lỗi thì container sẽ báo lỗi xem bằng log. Ở đây có lỗi, để chạy được ta cần cài thêm các extension cho php vì nó không tương tác được với wordpress. Mở container php: 
+php -m -> liệt kê các extension được cài trong php. Ta cần cài thêm 2 cái nx
+docker-php-ext-install mysqli
+docker-php-ext-install pdo_mysql
+Ra ngoài host: docker restart c-php -> khởi động lại sau khi cài 2 extension
+Ta dùng tk vừa mới tạo testuser để truy cập vào database nhưng tk vừa tạo chưa có quyền truy cập vào database nào hết nên ta phải cấp quyền cho nó-> mở container của mysql vào tk root: GRANT ALL ON <tên database muốn cấp quyền(có thể tạo mới)>.* TO 'test_user'; -> nếu vào bằng tk của testuser sẽ thấy có thêm database mà ta đã cấp quyền. Ta phải GRANT ALL ON chứ GRANT SELECT ON sẽ chỉ cấp mỗi quyền select
+-> sau đó đăng nhập vào tk admin là xong trang web với wordpress hoàn chỉnh. apache k set thư mục mặc định nên ta phải chọn index.php để vào trang quản trị. Ta set mặc định điều này bằng cách thêm vào DirectoryIndex trong httpd.conf là index.php -> sau đó restart lại c-httpd(k đc thì xóa đi r chạy lại) => bh khi vào localhost:9999 là nó tự động render index.php mặc định của wordpress
+
+=> Như v 1 server đầy đủ phải có 1 database và 1 máy chủ web. Máy chủ web ở đây là http nếu dùng html thì k cần php làm gì nhưng chạy index.php nên cần images php ở đây. Đó là đk tối thiểu. Wordpress yêu cầu dùng .php như v
+
+=> Quy trình: httpd là máy chủ web là lớp ngoài cùng tương tác với front-end trực tiếp, nó chứa 1 tập hợp file và cung 1 cổng, khi ta gửi GET đến cổng đó thì nó gửi trả lại file front-end đã xác định; mysql là database của backend, nơi mà data được lưu => đó là đk tối thiểu để chạy 1 backend cho web app là 2 cục này phải cùng 1 mạng là xong. Lập trình backend ở đây là cái web server + database + tương tác giữa database và web server. Còn lập trình front-end ở đây chỉ là tạo ra các file như html, js để nhét vào trong web server mà tương tác thôi
+=> php là ngoại lệ có khả năng biên dịch file.php chạy ở 1 cổng xác định. File php đó thg là file mục lục index nơi forward ra các file html thực tế muốn dùng
