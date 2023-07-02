@@ -1,0 +1,121 @@
+Firebase
+
+
+
+# Basic
+Năm 2011, tiền thân của firebase là Envolve dùng để tích hợp API vào app chat. Sau được Google mua lại vào 2014 và gọi là firebase - Dịch vụ CSDL hoạt động trên nên tảng điện toán đám mây. Nó hỗ trợ ứng dụng Android, iOS, Web.
+
+Firebase có rất nhiều tính năng:
+- Real-time Database cho phép lưu trữ đồng bộ dự liệu thời gian thực. Khi đăng ký 1 tk trên firebase là ta đã có 1 CSDL thời gian thực, dữ liệu nhận được dưới dạng JSON đồng bộ với mọi client đa nền tảng. Tất cả dữ liệu đều được cập nhập qua kết nối an toàn SSL. Khi mất mạng thì dữ liệu lưu ở local, có mạng sẽ đồng bộ.
+Firebase database query giúp lấy dữ liệu như kiểu SQL server ấy
+- Authentication cung cấp cho App các phương thức xác thực qua email, tk google, facebook,..
+- Firebase cloud messaging là chức năng khởi nguồn giúp xây dựng ứng dụng chat realtime đẩy thông báo tới nh thiết bị khác nhau kèm vô số chức năng
+- Remote Config giúp cập nhập ứng dụng nhanh chóng không cần xuất bản mới lên play store; giúp ứng dụng cập nhập dữ liệu ngay lập tức VD người dùng xóa ứng dụng tải lại thì config của ứng dụng phải thủ công làm lại thì firebase sẽ cài đặt thông số bên máy chủ giúp người dùng cập nhập ngay lập tức.
+- Firebase cung cấp hosting luôn theo bảo mật SSL từ mạng CDN. CDN - Content Delivery Network là mạng lưới máy chủ lưu bản sao của nội dung tĩnh trong website và phân phối đến nhiều máy chủ PoP. Mạng lưới máy chủ CDN phân phối mọi nơi toàn cầu. Từ PoP(Point of Presence), dữ liệu sẽ gửi tiếp đến người dùng cuối, bản sao nội dung trên máy chủ gần nhất sẽ trả về khi người dùng truy cập website
+
+Firebase miễn phí và trả phí nếu muốn nhiều tính năng nâng cao.
+Firebase giúp người dùng tập trung hơn vào giao diện vì máy chủ nó lo hết, giảm chi phí, đồng bộ => mô hình web serverless phổ biến khi toàn bộ server và db đều dùng cloud
+Firebase không có máy chủ nên không gặp các vấn đề về mở rộng máy chủ
+Firebase có tích hợp các API hỗ trợ Machine Learning như nhận diện văn bản, khuôn mặt, hình ảnh, quét mã vạch
+Nó cũng cho phép sao lưu tự động nên kbh sợ mất dữ liệu
+
+Firebase kp là mã nguồn mở, bị hạn chế ở nhiều quốc gia, chỉ hoạt động với CSDL NoSQL nên truy vấn mà phức tạp sẽ rất khó vì toàn JSON và k có tính năng SQL nào, truy vấn chậm, giá đắt nếu trả phí, chỉ chạy trên google cloud, thiếu 1 vài tính năng. Firebase thường được dùng cho ứng dụng nhỏ, với ứng dụng lớn còn tùy
+Bên cạnh firebase cũng có các nền tảng phát triển ứng dụng khác cạnh tranh như: Back4app mã nguồn mở, Backendless là Mobile Backend, AWS Amplify phát triển full stack, Parse, Kinvey,..
+
+-> VĐ: Thiết kế DB tạo 1 app bán hàng và cho phép người dùng thêm sản phẩm vào wishlist
+C1: Mỗi user có trường wish_list là 1 mảng chứa các products họ yêu thích
+=> Ez nhất nhưng giả sử muốn update giá 1 sản phẩm -> ta phải duyệt tất cả user và update lại product trong wish_list của họ -> k tốt
+C2: Tạo wishlist chung ở ngoài, mỗi item có 1 key userID để biết ai chọn nó trong wishList
+=> Mọi client đều nhận event khi 1 user tương tác vào wishlist chung đó -> bị giảm hiệu năng
+C3: Làm theo kiểu RDBMS(Relational Database Management System). VD: mảng ProductIDs trên mỗi user or 1 object riêng map userID với ProductID => nhưng dù cách nào thì cũng rất phức tạp để query ví dụ show wishlist của user thì phải lấy lần lượt
+Nên nhớ firebase nó là NoSQL nên k có các câu lệnh truy vấn để reduce hay join,.. nên gặp vấn đề trên
+
+-> Cách dùng firebase cung rest API với file JSON:
+Tạo dự án tương tự -> build -> realtime database -> create database -> start in test mode là mở bất kỳ ai, start in locked mode là phải cấp quyền, với các ứng dụng thực thì phải dùng locked mode -> mục data -> thêm file json or tự gõ theo nhánh -> để gõ: ấn nút mở xuống và gõ tên, mở xuống lại gõ tiếp, khi được ít nhất 2 cấp có thể dừng và ấn Add, sau đó mở rộng tiếp -> tương tác với DB qua url bên trên. Mỗi 1 nhánh tạo ra 1 đường link đến file json như ở VD thì nhánh One trong Pets có url là .../Pets/One.json
+=> Ta có thể chỉnh quyền ở tab rules read và write là true hết thì mọi ứng dụng bên ngoài đều có thể chỉnh sửa database của ta -> publish rules
+=> Trong documentation có nói rõ rest api của firebase như nào
+=> Muốn dùng trong Qt nhớ cài openssl
+
+-> Firebase database
+Xây dựng database authenticator cho ứng dụng REST API với firebase(đây mới chỉ là authen cho rest api), bao gồm cả đăng nhập google:
+Ta vào firebase chỉnh 2 rules là: "auth.uid != null" (trong docs có hết) => sẽ thành giới hạn ứng dụng nào được truy câp vào database -> vào lại ứng dụng bên trên sẽ thấy trả ra permission denied
+-> Lấy apikey: Project Overview -> Add web app -> Register App là xong -> trong phần Your App npm có trường apikey cần lấy
+-> Trong docs có hướng dẫn link, từng trường, response là gì, ví dụ với curl là https://firebase.google.com/docs/reference/rest/auth#section-create-email-password -> trong app: (theo docs) ta chỉ cần POST data vào link JSON kèm api key là được. Data đó có các trường payload json được xđ từ trước, ở th này là email, password, returnSecureToken -> chuyển sang json và post vào link kia
+-> Project firebase -> authentication -> sign-in method -> email/password enabled(tắt CORS extension) -> khi có người tham gia vào project sẽ hiện ở mục user -> như v là họ đã sign up vào ứng dụng của ta bằng địa chỉ gmail của họ
+=> Nếu họ tiếp tục signup bằng địa chỉ email đó sẽ báo lỗi vì firebase check trùng. Ở mục user, ta có toàn quyền disable account hay delete account
+-> Sau khi sign up lần sau họ có thể sign in với link sign in tương tự trong docs(phải đúng email và password)
+-> Khi đã signin cung như sign up thì họ đã có thể get post data vào cơ sở dữ liệu như bth r đó
+=> Tương tự có rất nhiều tính năng trong docs mà thao tác chỉ là post payload vào url nào đó mà thôi như sign in ẩn danh,..
+-> Khi người dùng signIn thành công, ta phải xử lý database cho phép người dùng lấy thông tin(là authenticated database call) => có 2 cách để làm điều này https://firebase.google.com/docs/database/rest/auth: 1 là dùng Google OAuth2, 2 là dùng idToken.
+Với cách 2: nó sẽ trả về 1 cái tokenId trong response, nếu k nó sẽ trả ra error(check error) -> ta parse trường idToken và nhét vào trường auth của url(trong docs) thì cái url đó sẽ valid với user hiện tại thao tác thoải mái
+
+Firebase hay heroku, nó đều dùng 1 bộ nhớ cache. Ta chỉnh sửa trong firebase và deploy lên nhưng có thể hiệu ứng đó k được áp dụng ngay lập tức mà lấy data từ file html.
+
+
+
+# Hosting Firebase
+-> Cách dùng firebase hosting cho trang web tĩnh: free thì chỉ dùng được 1GB, có custom domain
+Login firebase là google account -> create project -> tên dự án, chọn cả set up firebase hosting và gõ tên url web ra -> continue -> </> -> tên app -> register -> continue to console -> build -> hosting -> get started-> cd vào thư mục chứa thư mục public của dự án -> npm install -g firebase-tools -> firebae login(làm 1 lần) -> firebase init -> space để chọn, enter để xác nhận(có thể chọn nh options) -> nó bảo có chọn thư mục public là nơi ta có thể gõ tên thư mục vào, để là public thì ấn enter(có sẵn public và index.html bên trong r) -> k chọn github, dự án của ta phải có file gốc là index.html, k chọn overwrite cái index.html của ta, k chọn single page -> firebase deploy -> refresh trang
+
+Lỗi routing trong ReactJS khi deploy firebase => fix sửa file firebase.json thành:
+{
+  "hosting": {
+    "public": "build",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+
+Khi chuyển route, nó bị lỗi khi k tìm thấy route đó trong server hosting vì mặc định server chỉ host / or đường dẫn xđ trong package json, vì ta dùng single page nên phải redirect mọi url vào index.html để từ đó nó chạy các component Switch Route bên trong trỏ đến đúng trang cần lấy
+Tuy nhiên như trên nó chỉ đúng với SPA, nếu MPA với React sẽ k được
+
+Dùng firebase connect github(hosting CI/CD): Tiếp tục từ npm install -g firebase-tools -> firebase init hosting -> ... -> Chọn dùng github Yes -> xđ user/repo -> grant access theo url hiện ra(làm 1 lần) -> xđ nhánh -> xđ câu lệnh trước và sau khi deploy -> Có option chọn mỗi khi merge pull request, app sẽ tự động deploy lại (thực ra cứ push lên git là nó tạo ra phiên bản mới ngay) -> nếu gắn với git phải push lên 1 lần mới đc
+=> Cái CSR có index.html dùng được chứ NextJS thì k dùng được như trên mà phải enable framework(vẫn trong giai đoạn thử nghiệm)
+
+-> NextJS hosting: firebase experiments:enable webframeworks -> firebase init hosting -> làm bth tự nhận diện project theo framework phổ biến => trả phí mới được. Với nextjs nên host bằng vercel
+
+Làm thủ công NextJS hosting + CICD (Nếu k cần CICD chỉ cần bỏ đoạn setup git là được):
+... -> firebase init hosting -> chọn vừa config được, vừa chơi GitAction -> setup url, nhánh, các thứ. Chọn url directory là out k dùng public -> Khi dùng nextjs có thể kp single page router như bth thì có thể dùng như dưới. Khi đó MPA(tức router của trang chính k trỏ đến các trang con mà người dùng chủ động gõ url vào trang con) thì phải dùng dynamic link như dưới:
+{
+  "hosting": {
+    "public": "out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "/**", 
+        "dynamicLinks": true
+      }
+    ]
+  }
+}
+Để chạy được, các lệnh github ta k set gì hết. Thêm lệnh npm run build và npm run export vào package.json để tạo ra thư mục out(tương đương thư mục bulid và public của react)
+Mỗi lần gọi lệnh npm run export sẽ tạo ra file index.html trong out ok. Nhưng đôi khi để chạy được các lệnh này, 1 vài tính năng của Next sẽ lỗi. VD khi dùng next/image thẻ <Image/> thì phải thêm config unoptimize: true vào vì khi dùng next export thì cái Image Optimizer mặc định k tương thích (chỉ chạy bằng next start mới có tương thích) (Thực tế có loại next image optimizer khác có thể dùng nhưng ở đây ta chỉ đơn giản disable nó)
+Trong gitignore cũng phải xóa out đi vì phải push cả nó lên git. Mỗi khi có git action (push, merge) lên đúng 1 nhánh của git sẽ kích hoạt gitaction gắn với firebase chạy lần lượt các lệnh cần thiết deploy dự án. Có thê xem trạng thái trong mục Action của dự án trên github.
+=> Mỗi lần sửa đổi: chạy build và export -> push lên git sau khi đổi thư mục out xong -> là xong. Tức cái lệnh chạy trước khi deploy là k bao gồm lệnh build (Thực chất có thể dùng lệnh build ở đó)
+=> NextJS là SSR và cần server để chạy nhưng ở đây ta dùng SSG export tĩnh ra rồi host lên cloud này thôi, cũng có thể coi là CSR trừ khi nó dùng getStaticProps fetch trước. CSR chuẩn thì phải là React, khi mà data gần như k có gì lúc ban đầu và browser phải fetch tiếp toàn bộ.
+Trong quá trình export có thể bị lỗi các thứ vì config webpack của nextjs mà ta phải search gg thôi
+
+Môi khi update thì check cả 2 url .web.app và .firebaseapp.com thì mới được bản update mới nhất 
+
+-> Với react app: làm tương tự -> ở thư mục chưa public -> npm run build -> ... -> chọn folder public hay k thì ta gõ build vào
+Ta k cần phải vào web firebase và tạo sẵn 1 app nx mà chỉ cần -> create a new project(k dùng existing project) -> gõ tên project(là url web hiển thị, k viết hoa) -> enter tiếp để xác nhận dùng project id cùng tên luôn -> goi single app hay k tức là có dồn tất cả vào file index.html hay k thì chọn có ->..
+
+Firebase lỗi reload khi reload trang lại theo url mới của ứng dụng và fix bằng cách thêm: 
+"rewrites": [
+  {
+    "source": "**",
+    "destination": "/index.html"
+  }
+]
+Tức là ta vào bằng 1 url của react-router-dom thì firebase k chạy app nên k nhận diện được. Nhưng khi thêm code trên thì nó sẽ chạy tiếp vào index.html để xử lý dom và cho ra kết quả miễn là gọi đến url host là server đó
+=> refer tói dự án "Projects / Tinkerbellgarden"

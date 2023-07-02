@@ -1,0 +1,8 @@
+# .yml
+hoten: ABC
+cacmonhoc:
+  monhocA: 9
+  # Khi có nhiều phần tử
+  monhocB: 10
+    - 5
+    - 9

@@ -1,0 +1,357 @@
+Nginx
+
+
+
+# Basic
+Nginx là 1 web server nổi tiếng thứ 2 sau Apache. Mã nguồn mở, hướng đến cải thiện tối đa hiệu năng và sự ổn định. Nó có thể làm nhiều hơn 1 máy chủ bình thường như Proxy server(cho IMAP, POP3, SMTP), reverse proxy, load balancer cho các máy chủ(TCP, UDP, HTTP).
+Cũng có các web server khác như Google Server, IIS,..
+
+Web server là phần mềm phục vụ web. Tât cả các web server tối thiểu đều phải serve được các file html và htm. Tuy nhiên mỗi web server có thể phục vụ cho 1 số kiểu file chuyên biệt như Apache, Nginx chuyên php; IIS của Microsoft dành cho asp, aspx; Sun Java system dành cho jsp
+Khi có request, web server sẽ tải 1 tệp từ ổ đĩa lên trả lại user
+
+Web server cũng chỉ là 1 máy tính chạy phần mầm web server này thôi. Nhờ có nó mà máy tính này serve file cho máy tính khác thông qua HTTP. Mở rộng thêm thì kết nối với database và thao tác với nó. Vị trí đặt server cũng ảnh hưởng đến tốc độ. Để cấu hình còn phải xem xét router, gateway, mạng ta như nào chứ kp cứ có phần mềm chạy web server là public ra ngoài được
+
+-> Reverse Proxy là cầu nối giữa client và server. Nó nhận yêu cầu máy khách và chuyển lên server cũng như gửi phản hồi từ server tới client => phản hồi từ Reverse proxy giống như là từ 1 máy chủ.
+Nginx reverse proxy: bảo mật cao, chặn DDoS, cân bằng tải giữa nhiều server, xử lý được 10000 kết nối đồng thời nhưng chiếm ít bộ nhớ, hoạt động như reverse proxy cho các giao thức HTTP HTTPS TCP UDP SMTP IMAP POP3, vận hành nhiều web server khác nhau từ 1 IP, cache nội dung để mã hóa SSL giảm tải cho server tĩnh, test A/B mà k cần cài code JS vào trang
+
+-> Web service là tập hợp các giao thức trao đổi dữ liệu trong TH như VD: các phần mềm viết bằng các ngôn ngữ lập trình khác nhau, chạy trên nền tảng khác nhau có thể sử dụng các dịch vụ web để trao đổi dữ liệu qua mạng máy tinh theo cách tương tự như các tiến trình trong máy tính liên lạc với nhau. 
+Có 2 loại web service: SOAP và RESTful -> k đi sâu
+
+-> NGINX k tạo process cho mỗi yêu cầu mà nó xử lý hướng sự kiện, các yêu cầu xử lý trong cùng 1 luồng bất đồng bộ. Khác với Apache cấu hình kiểu "prefork" thì mỗi request kể cả hình ảnh hay file.txt đều nằm trên 1 process riêng thì tốn nhiều tài nguyên hệ thống. Còn NGINX thì 1 process có thể xử lý nhiều request liên tục dựa vào lượng tài nguyên còn lại của hệ thống. Mọi yêu cầu được process riêng của NGINX thực hiện và trả lại data qua reverse proxy. 
+Những file tĩnh như txt, css, hình ảnh thì NGINX sẽ trả dữ liệu luôn mà không cần các module server side can thiệp nên tốc độ tăng.
+
+Apache chỉ nhận 1 lượng request đã xác định và loại bỏ số còn lại trong khi NGINX cố gắng hết khả năng để k bỏ qua 1 request nào. Nó có thể chịu được số lượng user lớn truy xuất đến file tĩnh or động 1 thời điểm nhanh hơn là Apache và load file tĩnh nhanh hơn. Đương nhiên điều này độc lập với tốc độ mạng internet của người dùng
+
+Các threads tương đồng nhau cùng được quản lý trong process. Tức là mỗi process gồm nhiều worker nhỏ hơn và Worker Connections sẽ xử lý tât cả thread đó, nó gửi đến Master Process -> Worker Process xử lý request
+
+NGINX thường chạy khi trang web có lưu lượng truy cập cao với nhiều nội dung tĩnh. 
+NGINX có thể dùng kết hợp với Apache bằng cách dùng nó như 1 server proxy đứng trước Apache để tận dụng lợi thế xử lý nhanh, thiết lập kết nối số lượng lớn đồng thời
+Client <--> Front-end <--> Backend(Php,..) - Apache
+                      <--> Static content(txt, js, css, images, video,..) - NGINX
+
+Cloudflare có thể dùng như 1 reverse proxy cho trang web, kết nối nó với server NGINX của ta để dùng. Cloudflare chống DDoS rất tốt nên có thể thêm để chống. Cứ cần thêm cái gì thì add nó như 1 lớp reserve proxy cứ forward liên tục tới đích là được.
+
+-> Cách cài tương tự: download NGINX trên Mainline -> giải nén vào ổ C -> vào chạy file nginx.exe -> mở browser localhost
+Tùy chỉnh file config, nó có các comment và config có sẵn có thể dùng luôn rất dễ hiểu, thay đổi file hiển thị đầu tiên
+
+Cơ chế hướng sự kiện xử lý đơn luồng async là mấu chốt mà Nginx giúp giải quyết vấn đề C10K. Khi khởi chạy thì nginx chỉ chạy 1 tiến trình duy nhất gọi là master process. Nó sinh ra các tiến trình con và các tiến trình con mới là thứ xử lý request của user. Để định nghĩa các worker process, ta phải thao tác với tệp config.
+
+Nginx sau khi click đúp vào nginx.exe là nó đã chạy r -> vào local host là thấy, muốn tắt thì mở ctrl shift escape để end task
+Để chạy react với nginx: npm run build r lấy nó nhét vào nginx html r chạy nginx như bth
+
+
+
+# Dùng config Nginx
+URL: https://viblo.asia/p/tim-hieu-va-huong-dan-setup-web-server-nginx-OREGwBwlvlN#_iii-cau-hinh-http-trong-nginx-6
+
+-> Trong file config có nhiều module:
+- http: định nghĩa các chỉ thị và các khối từ tất cả cac module liên quan đến HTTP của Nginx. Có thể tạo nhiều khối và các khối chỉ thị sau sẽ đè lên trước.
+- server: khai báo 1 website, 1 website cụ thể(nhận diện bởi 1 or nhiều hostname) được nhận diện bởi nginx và cấu hình của nó. Khối này buộc nằm trong khối http. Mặc định nó định nghĩa hostname localhost gửi lại file index.html
+- location: định nghĩa các thiết lập áp dụng cho 1 vị trí cụ thể của URL website. Khối location có thể dùng trong khối server or nằm chồng trong 1 khối location khác
+=> VD ta tạo khối http cấu hình web và bên trong có nhiều khối server, mỗi khối server ta định nghĩa các tên miền mà website có. Bên trong đó lại có nhiều khối location định nghĩa các uri khớp với 1 mẫu nào thì thiết lập cái gì
+
+-> Các chỉ thị:
+
+--> Chỉ thị về cấu hình HOST và SOCKET:
+listen: dùng trong khối server, địa chỉ ip và port được dùng bởi socket phục vụ website. Thường là 80 cho http và 443 cho https. Cú pháp:
+listen [address] [:port] [additional options];
+Các [additional options]:
+- default hoặc default_server: chỉ rõ khối server này được dùng như website mặc định cho bất kỳ yêu cầu nhận được tại địa chỉ IP và port được chỉ rõ
+- ssl: dùng SSL
+- gửi lời gọi đến hệ thống bind và listen: backlog=num, rcvbuf=size, sndbuf=size, accept_filter=filter, deferred, setfib=number, và bind
+VD: listen 192.168.1.1:80;
+listen 443 ssl; # k có address tự hiểu localhost
+
+server_name: sử dụng trong khối server; đăng ký 1 or nhiều hostname cho khối server. Khi nhận request, nó sẽ so sánh host trong phần header của yêu cầu với tất cả các khối server đang có, khối đầu tiên khớp là lấy, k khớp thì Nginx chọn khối server đầu tiên khớp với thông số của listen như port 80 rồi ưu tiên khối đầu tiên có tùy chọn mặc định cho phép trên chỉ thị listen
+server_name hostname1 [hostname2…];
+VD: server_name *.website.com; # nhận tất cả các domain có đuôi là .website.com
+server_name .website.com; # Kết hợp cả *.website.com và website.com
+Ta có thể sử dụng chuỗi rỗng như 1 giá trị của chỉ thị để bắt tất cả các yêu cầu không có giá trị Host trong phần header, nhưng chỉ sau ít nhất 1 tên thông thường (hoặc “_”). VD: server_name abc.com “”;
+server_name _ “”;
+=> _ tức là mọi domain. 
+
+Cấu hình HTTPS trong NGINX:
+VD: server {
+  listen 80 default_server;
+  server_name _;
+  return 301 https://$host$request_uri;
+}
+=> Vc return 301 là ta cho google biết ta đổi đường dẫn vĩnh viễn về HTTPS => Khi dùng như này nó sẽ redirect mọi truy vấn tới HTTPS cho tât cả các domain. Or ta có thể chỉ redirect 1 server nào đó. VD:
+server {
+  listen 80;
+  server_name example.com;
+  return 301 https://example.com$request_uri;
+}
+
+Các chỉ thị khác cho server:
+server_name_in_redirect
+server_names_hash_max_size
+server_names_hash_bucket_size
+port_in_redirect 
+tcp_nodelay 
+tcp_nopush 
+sendfile_max_chunk 
+reset_timedout_connection 
+
+--> Cấu hình đường dẫn và tài liệu:
+root: sử dụng trong khối server, http, location, if; định nghĩa tài liệu gốc, chứa các tập tin muốn gửi khách
+Dùng cú pháp: root /path/resource/; Giá trị mặc định là html
+
+Chỉ thị khác cho đường dẫn tài liệu:
+alias
+error_page
+if_modified_since
+index
+recursive_error_pages
+try_files
+
+Mặc định trong các tool webserver ta dùng index.html trong thư mục root thì nó sẽ hiển thị file k có đuôi .html, đặt khác thì nó vẫn giữ .html
+
+--> Cấu hình các request từ client:
+keepalive_requests: sử dụng trong khối server, http, location; xác định tối đa số lượng yêu cầu được phục vụ trên 1 kết nối keep-alive. Giá trị mặc định là 100
+Dùng kiểu: keepalive_requests 100;
+
+Cấu hình khác cho các request từ client:
+keepalive_timeout
+keepalive_disable
+send_timeout
+client_body_in_file_only
+client_body_in_single_buffer
+client_body_buffer_size
+client_body_temp_path
+client_body_timeout
+client_header_buffer_size 
+client_header_timeout 
+client_max_body_size 
+large_client_header_buffers 
+lingering_time 
+lingering_timeout 
+lingering_close 
+ignore_invalid_headers 
+chunked_transfer_encoding 
+chunked_transfer_encoding 
+=> Search: https://viblo.asia/p/tim-hieu-va-huong-dan-setup-web-server-nginx-OREGwBwlvlN#_iii-cau-hinh-http-trong-nginx-6
+
+--> MIME types: 
+Multipurpose Internet Mail Extensions là 1 chuẩn internet mở rộng định dạng của email để hỗ trợ: văn bản khác ASCII, tệp kp văn bản,... MIME thiết kế dùng cho SMTP nhưng giờ k chỉ mô tả nd email mà còn mô tả các loại nd nói chung.
+
+types: dùng trong khối server, http, location; giúp ta tạo ra mối tương quan giữa các loại MIME và các phần mở rộng tập tin. Cú pháp:
+types {
+  mimetype1 extension1;
+  mimetype2 extension2 [extension3…];
+  […]
+}
+
+Khi xử lý 1 tập tin, nó kiểm tra phần mở rộng của tập tin để quyết định loại MIME. Sau đó gửi loại type đó trong phần Content-Type của response, tiêu đề này có thể ảnh hưởng đến các trình duyệt xử lý tệp tin.
+VD: loại MIME của tập tin là chúng ta yêu cầu là application/pdf, trình duyệt của chúng ta sẽ cố gắng đọc tập tin đó bằng việc sử dụng 1 plugin tương ứng với loại MIME đó thay cho việc tải tập tin đó về. Nói cách khác, chúng ta sẽ có thể đọc nội dung của tập tin pdf trên trình duyệt, thay cho việc trình duyệt sẽ tải tập tin pdf đó về máy của chúng ta.
+Nginx bao gồm 1 tập các MIME trong 1 tập tin riêng biệt mime.types mà ta có thể bao hàm nội dung của nó vào file conf với: include mime.types;
+Tập tin này chứa sẵn các phần mở rộng tệp tin quan trọng nhất mà chúng ta k cần chỉnh gì thêm. Nếu phần mở rộng k tìm thấy sẽ dùng loại mặc định được ghi trong chỉ thị default_type. Nó tự lấy các giá trị mặc định khi k đính kèm mime.types là:
+types {
+  text/html html;
+  image/gif gif;
+  image/jpeg jpg;
+}
+
+Chỉ thị về type khác:
+default_type
+types_hash_max_size
+
+--> Các chỉ thị về giới hạn:
+limit_except
+limit_rate 
+limit_rate_after 
+satisfy 
+internal 
+
+--> Các chỉ thị về xử lý tệp tin và bộ nhớ đệm:
+disable_symlinks 
+directio 
+directio_alignment 
+open_file_cache 
+open_file_cache_min_uses 
+open_file_cache_valid 
+read_ahead 
+
+--> Other directives
+log_not_found 
+log_subrequest 
+merge_slashes
+msie_padding 
+resolver 
+resolver_timeout 
+server_tokens 
+underscores_in_headers 
+variables_hash_max_size 
+variables_hash_bucket_size 
+post_action 
+
+--> Setting dùng gzip cho static file giúp giảm thiểu cost IO và đường truyền. Setting cache control sẽ giúp server kp request lại static file nhiều lần vì lưu sẵn trên cache rồi: 
+http {
+  gzip              on;
+  gzip_http_version 1.0;
+  gzip_types        text/plain
+                    text/html
+                    text/xml
+                    text/css
+                    application/xml
+                    application/xhtml+xml
+                    application/rss+xml
+                    application/atom_xml
+                    application/javascript
+                    application/x-javascript
+                    application/x-httpd-php;
+  gzip_disable      "MSIE [1-6]\.";
+  gzip_disable      "Mozilla/4";
+  gzip_comp_level   1;
+  gzip_proxied      any;
+  gzip_vary         on;
+  gzip_buffers      4 8k;
+  gzip_min_length   1100;
+}
+
+--> keepalive là 1 technique giúp giữ TCP connection ngay cả khi HTTP connection session đã kết thúc, để reuse cho lần request tiếp theo. Vì bình thường client tạo kết nối TCP tới server thì sau khi nhận response sẽ đóng kết nối. Nhưng nếu 1 user gửi nhiều request để lấy cả static resource thì nên dùng bằng cách thêm chỉ thị keepalive vào upstream: 
+upstream app {
+  server 127.0.0.1:5000;
+  keepalive 16;
+}
+
+-> Bottleneck là nút thắt cổ chai. Trong 1 dự án có bottleneck sẽ là 1 process trong chuỗi mà bị giới hạn về capacity khiến cho capacity của cả chuỗi đều bị nghẽn theo.
+
+Tool: https://github.com/matsuu/kataribe. giúp phát hiện bottleneck nhưng phải enable cái => uncomment phần log_format và access_log của file config
+
+-> Dùng NGINX làm Load Balancer: Phân bố request cho servers đều nhau. VD:
+Config trên máy 10.10.10.1 là:
+upstream proserver {
+  server 10.10.10.9:9002;
+  server 10.10.10.10:9002;
+}
+=> với 2 server đó 10.10.10.9 và 10.10.10.10 đang chạy ở cổng 9002
+Còn config để máy 10.10.10.1 đón ở cổng 9000:
+server {
+  proxy_buffering off;
+  client_max_body_size 5M;
+  listen 9000;
+  location / {
+    proxy_pass http://proserver;
+  }
+}
+=> Chạy NGINX bằng lệnh sudo service nginx restart(trên window)
+
+Có thể sửa config với tham số weight:
+upstream proserver {
+  server 10.10.10.9:9002 weight=1;
+  server 10.10.10.10:9002 weight=2;
+} => Là xong 1 cái load balancer. Khi gửi về 10.10.10.1 sẽ redirect vào 10.10.10.9 or 10.10.10.19 tùy 
+
+
+
+# Dùng nginx chống DDoS
+=> 1 số config chỉ có trên nginx plus, k dùng được trên nginx thường
+
+--> DDoS thì lưu lượng truy cập lớn từ 1 tập các IP cố định vì hacker chỉ cần cho bot liên tục request tới server, 1 lượng đủ để áp đảo máy chủ. Việc sử dụng forward proxy cũng có biểu hiện tương tự nhưng lưu lượng vẫn thấp hơn nhiều so với các cuộc tấn công DDoS. 
+Header User-Agent thường là 1 giá trị non-standard k chuẩn
+Header Referer thường là 1 giá trị có thể liên kết với cuộc tấn công.
+
+-> Trước tiên, nginx có kiến trúc non-blocking và event-driven vốn đã có thể xử lý 1 lượng request khổng lồ. Các yêu cầu mới không làm gián đoạn các phiên làm việc của nginx nên bản thân nó đã ngăn chặn các cuộc tấn công cơ bản.
+Nginx có thể xử lý lượng request đồng thời tốt hơn các máy chủ cân bằng tải khác, do đó vẫn nên dùng thêm.
+
+-> Giới hạn số lượng request 1 ip chỉ được gửi sau mỗi 2s.
+limit_req_zone $binary_remote_addr zone=one:10m rate=30r/m;
+server {
+  # ...
+  location /login.html {
+    limit_req zone=one;
+  # ...
+  }
+}
+=> limit_req_zone định cấu hình 1 vùng nhớ chung gọi là one lưu trạng thái các request cho key là $binary_remote_addr (ip của máy khách). zone one lưu state của request từ 1 ip và giới hạn 30 request trong 1 phút. 
+Mọi request tới server vào url /login.html sẽ dùng zone one
+
+-> Giới hạn số lượng kết nối đến 1 vùng chỉ định của trang web
+limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+server {
+  # ...
+  location /store/ {
+    limit_conn addr 10;
+    # ...
+  }
+}
+=> limit_conn_zone định cấu hình 1 vùng nhớ chung là "addr" lưu các yêu cầu có key là ip của client là $binary_remote_addr. Ở đây nó limit 1 ip gọi tới vùng /store/ của trang web chỉ được max 10 connection thôi
+
+-> Vì hacker có xu hướng dùng các kết nối ghi dữ liệu thường xuyên vì chúng muốn giữ connection càng lâu càng tốt, từ đó giảm khả năng của server trong việc chấp nhận các connection mới. Các connection chậm này có thể được chặn lại. Slowloris là 1 VD của kiểu tấn công này. 
+server {
+  client_body_timeout 5s;
+  client_header_timeout 5s;
+  # ...
+}
+=> client_body_timeout kiểm soát thời gian nginx đợi để nhận được body của client. client_header_timeout kiểm soát thời gian nginx đợi để nhận được header của client. 
+Ở đây nếu quá 5s mà chưa nhận được, nginx sẽ đóng kết nối phiên hiện tại và cho rằng yêu cầu bị hủy bỏ và thực hiện xử lý khác. Vì nếu nginx đợi quá lâu sẽ giảm performance trong việc nhận connection mới
+
+-> Chặn ip với nginx
+location / {
+  deny 123.123.123.0/28;
+  # ...
+}
+=> Phải làm thủ công nếu check log thấy 1 ip là hacker DDoS
+
+-> Trong 1 số TH ta chỉ dựng server cho 1 lượng ip cụ thể
+location / {
+  allow 192.168.1.0/24;
+  deny all;
+  # ...
+}
+
+-> Sử dụng caching trong nginx
+Khi mà DDoS yêu cầu lặp lại nhiều lần, các data liên quan nên được lấy từ cache để giảm tải cho server thực
+
+Trước tiên cấu hình 1 proxy cache:
+proxy_cache_path /path/to/cache levels=1:2 keys_zone=my_cache:10m max_size=10g inactive=60m;
+=> 1 proxy cache chạy tại url /path/to/cache với max dung lượng 10GB và thời gian hoạt động là 60p. Tham số levels xác định cấu trúc thư mục, ở đây cache được lưu dưới 1 thư mục cấp 1 và 1 thư mục cấp 2, cấu trúc như v giúp tăng hiệu suất khi truy cập cache.
+
+Dùng proxy_cache_use để chỉ định khi nào cache nên được cập nhật:
+location / {
+  proxy_cache my_cache;
+  proxy_cache_valid 200 302 10m;
+  proxy_cache_use stale updating error timeout;
+  proxy_pass http://backend;
+}
+=> Dùng cache tên là my_cache xác định khi khởi tạo. Thời gian hiệu lực của các response mã 200 và 302 là 10p, các phản hồi với mã khác sẽ k được lưu trong cache. 
+Còn proxy_cache_use stale updating error timeout; xác định các tùy chọn sử dụng cache trong trường hợp cache không khả dụng or gặp sự cố:
+- stale: sử dụng cache cũ nếu cache không có bản sao mới nhất của tài nguyên
+- updating: sử dụng cache cũ trong quá trình cập nhật nếu cache vẫn đang được cập nhật bởi 1 yêu cầu khác
+- error: vẫn sử dụng cache với yêu cầu lỗi và k thể nhận phản hồi từ server
+- timeout: vẫn sử dụng cache nếu request timeout và k nhận phản hồi từ server backend
+
+-> Chặn các yêu cầu tùy tình huống:
+
+location /foo.php {
+  deny all;
+}
+=> Sau khi cuộc tấn công DDoS nhắm vào /foo.php, mọi request vào nó nên được chặn lại. Ta có thể fix or chuyển sang 1 location khác.
+
+location / {
+  if ($http_user_agent ~* foo|bar) {
+    return 403;
+  }
+  # ...
+}
+=> Header User-Agent có giá trị bất thường so với các truy cập hợp lệ khác có thể bị chặn. Tương tự với các request có header Referer
+
+-> Giới hạn kết nối đến máy backend
+upstream website {
+  server 192.168.100.1:80 max_conns=200;
+  server 192.168.100.2:80 max_conns=200;
+  queue 10 timeout=30s;
+}
+
+-> Giới hạn kết nối tới backend server. Vì mục tiêu chống DDoS là cản được hacker và nếu có bị DDoS thì phải giới hạn 1 lượng để k sập server. 
+upstream website {
+  server 192.168.100.1:80 max_conns=200;
+  server 192.168.100.2:80 max_conns=200;
+  queue 10 timeout=30s;
+}
+=> Chỉ Nginx Plus mới dùng được max_conns. Ở đây ta giới hạn không quá 200 kết nối đến mỗi server backend đồng thời. Chỉ thị queue giới hạn lượng yêu cầu đợi khi mọi máy chủ trong nhóm upstream đạt max kết nối, timeout chỉ định thời gian 1 yêu cầu đợi. Ở đây quá 410 kết nối đồng thời sẽ từ chối, queue quá timeout cũng từ chối và pop khỏi queue.
+
+Nginx Plus có thể nhận biết 1 cuộc tấn công DDoS thông qua Status or Dashboard, nó show số liệu và các mẫu lưu lượng bất thường, từ đó ta có thể thực hiện các actions cụ thể.
+

@@ -1,0 +1,23 @@
+-> Docker là nền tảng cho phép build, ship, run ứng dụng nhanh chóng trên nhiều nền tảng, mã nguồn mở. Có 2 phiên bản CE cho nhóm nhỏ và EE cho doanh nghiệp. 
+Docker giúp build và run ứng dụng trên 1 môi trường cách ly là các container ảo hóa. Tốc độ nhanh và container rất nhẹ giúp giảm delay giữa code và production. Setup môi trường tránh xung đột phiên bản cho app 
+
+Phần cứng -> HostOS -> Docker running có nhiều container -> các ứng dụng trên Container(App, library)
+
+
+-> So sánh với VM:
+Chạy Hypervisor trên HostOS(phần mềm quản lý nhiều máy ảo) -> trên Hypervisor sẽ chạy nhiều máy ảo khác nhau, mỗi máy ảo là 1 hệ điều hành riêng. Nó làm bằng cách phân chia CPU ra làm nhiều phần cho từng máy ảo và càng nhiều máy ảo sẽ càng đốt CPU. Mỗi máy ảo có 1 hệ điều hành khác nhau và trong mỗi máy ảo là 1 môi trường đều có đầy đủ thư viện các thứ để chạy ứng dụng mà ta muốn chạy trên máy ảo đó. Các VM có thể chia sẻ tài nguyên cho nhau.
+Còn Docker Engine chạy trên HostOS và trên nó sẽ có nhiều container. Chúng dùng chung hđh với HostOS, chỉ là cài thêm cac bins/libs để giống như ứng dụng chạy trên hđh ảo, nên tốc độ nhanh hơn và có thể chia sẻ tài nguyên cho nhau nhưng vẫn như dùng OS đó thật.
+
+
+-> WSL chính là ứng dụng ubuntu trên window. Phiên bản WSL2 của window mới là phiên bản chuẩn giống linux nhất, dùng sẽ k còn bị lỗi linh tinh. Cần phải cài window phiên bản chuẩn dùng được microsoft store mới tải và dùng được.
+
+Ở phiên bản WSL2 cho phép ta dùng kết hợp trong rất nhiều ứng dụng của MS như VSC hay docker hoàn thiện hơn rất nhiều so với phiên bản trước và tốt hơn HyperV nhiều.
+Để cài WSL2 có phải cài wsl là thứ để cài các phiên bản distribution của nhiều loại OS, sau đó ta phải tải tiếp từ WSL các distribution của OS muốn sử dụng VD ubuntu, sau đó nâng cấp các distribution dùng WSL2. Máy muốn dùng được WSL2 phải enable virtualization.
+Dù máy dùng bios mode UEFI hay legacy thì đều phải vào setup bios của máy tính khi khởi động chẳng hạn để enable virtualization technology. 
+
+Dùng docker trên window sida vl. Dùng docker trên linux mà với hyperV thì k ổn, cách tốt nhất là dùng docker với WSL2. 
+Full cài docker - wsl2: https://xuanthulab.net/cai-dat-va-chay-docker-trong-wsl2-windows.html
+
+
+
+

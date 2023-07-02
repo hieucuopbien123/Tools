@@ -1,0 +1,46 @@
+-> Apache Software Foundation là 1 tổ chức phi lợi nhận phát triển các phần mềm mã nguồn mở
+Apache cũng là tên của máy chủ web server nổi tiếng nhất thế giới gọi là Apache HTTP Server. Nó được phát triển bởi 1 nhóm dev tình nguyện chứ k được phát triển trực tiếp bởi ASF. Tuy nhiên ASF cũng có quản lý và hỗ trợ Apache HTTP Server cùng nhiều dự án open source software khác. Nch là 2 cái k liên quan, ASF là 1 tổ chức, Apache là 1 phần mềm tạo máy chủ webserver.
+
+Apache server như 1 web server bth được viết bằng C++. Nó nhận yêu cầu từ trình duyệt và phản hồi lại file cần lấy. Có thể xử lý đồng thời hàng ngàn yêu câu 1 lúc. Nó giống việc serve ra mọi thứ trong 1 thư mục.
+Nên nhớ máy chủ web truyền thống ngày xưa dùng apache thì rất ok. Vì bản chất nó cung ra 1 list file, rồi tùy thuộc vào request của người dùng mà serve 1 file nào trong list đó. Nó cũng tùy biến request nào thì chạy tiếp vào cổng nào chẳng hạn (reverse proxy). 
+Nhiệm vụ chính là: quản lý các kết nối với các máy khách và điều phối yêu cầu đến các tiến trình xử lý web phù hợp.
+Apache Server có rất nhiều tính năng bổ sung và mở rộng. Nó hỗ trợ CGI, PHP, SSL/TLS, GZIP compression, virtual hosting, URL rewriting, xác thực và ủy quyền, cân bằng tải và nhiều tính năng khác.
+
+Apache Server là một máy chủ web truyền thống dựa trên kiến trúc đa tiến trình hoặc đa luồng. Khác vói NodeJS server là đơn luồng bất đồng bộ. Do đó Apache Server thg dùng cho các ứng dụng web truyền thống với lượng tải lớn. Còn nodejs thg dùng cho các ứng dụng web thời gian thực.
+Mặc dù nodejs có thể hoạt động như 1 máy chủ độc lập, nhưng vẫn sử dụng thêm Apache Server được như 1 proxy server or load balancer. Apache server cũng hỗ trợ xác thực ủy quyền, SSL/TLS, caching. Vc dùng thêm 1 lớp apache server giúp cung thêm 1 lớp bảo mật, phân phối tài nguyên tốt hơn.
+Bây giờ khi nhiều web server ra đời như NodeJS cho tùy biến rất nhiều thứ phức tạp thì apache k còn sử dụng nhiều làm web server nhưng người ta vẫn dùng nó làm load balancer or reverse prox. Điều đb là ban đầu nó là 1 web server chuyên nghiệp, bh thì chỉ dùng như 1 công cụ bổ sung. Nên khi nói 1 web dùng máy chủ Apache, có thể nó dùng hoàn toàn apache làm server or apache server đó chỉ đang là reverse proxy thôi.
+
+Khi ta nói tới server, nó hoàn toàn độc lập với việc hosting. Hosting bản chất chỉ là mở 1 cổng local trên máy cho máy khác truy cập, cấu hình tường lửa, publish cổng cho phép người khác truy cập máy chủ web đó từ bên ngoài (cần cấu hình modem/router cổng chuyển tiếp). 
+
+
+-> Nếu k dùng Apache Server, ta vẫn có thể perform mọi thứ với các tool hiện có. 
+VD dùng apache server serve file index.html khi người dùng gửi request tới 1 port nào đó. Điều này hoàn toàn bị thay thế bởi việc dùng npm start trong react sẽ tự chạy trên 1 port, chỉ cần cung port đó ra ngoài thì người dùng truy cập được. Lúc này apache server có thể làm hơn thế nx, VD người dùng request vào domain nào thì chạy vào port nào chẳng hạn
+Vd: dùng apache server làm load balancer. NodeJS server hoàn toàn có thể dùng pm2 hay package cluster để quản lý và chạy nhiều instance của ứng dụng nodejs trên nhiều tiến trình hay máy chủ khác nhau. Apache server còn mạnh hơn khi có nhiều server trên các máy khác nhau với url riêng và load balancing giữa nhiều url độc lập đó.
+VD: apacher server làm bảo mật TLS/SSL có thể dùng module https hay express server của nodejs để tạo 1 máy chủ HTTPS với chứng chỉ SSL/TLS ok. 
+=> Apacher server hay nginx khi dùng vẫn cho ta sử dụng cân bằng tải hay bảo mật, quản lý tài nguyên ở 1 cấp độ phức tạp hơn thay vì dồn hết cho NodeJS. Khi các hệ thống thực sự lớn với sơ sở hạ tầng lớn. 
+
+VD: Để chạy mã PHP, ta thường dùng máy chủ apache cung ra file PHP cho browser. Nhưng máy chủ đó bản chất là: gọi vào 1 port thì serve lại 1 thư mục. Đây chính là mô hình chuẩn của web ngày xưa. Khác với nodejs là ta code chạy ở port nào và publish port đó ra, thì ngày xưa họ code server PHP như bth (nhưng k gọi là webserver vì nó k serve file cho client) rồi chạy 1 web server là 1 ứng dụng riêng để serve code server đó trên 1 port.
+=> Đó là tùy ngôn ngữ chứ server PHP làm gì có hàm listen như nodejs. Do đó ta k cần Apache server, ta chỉ cần bất cứ 1 loại server nào có khả năng serve file ở 1 port là được.  
+Vd: PHP built-in server ở phiên bản 5.4 đổ đi với
+php -S localhost:8000 => serve thư mục hiện tại ở cổng nào. 
+
+Vd các server linux serve file trong hệ thống ra thông qua apache server đó. Bắt ở 1 cổng thì serve lại 1 file CGI script bằng cách chạy và trả lại kết quả
+
+=> Chốt có 2 loại server: 
+1 là chạy lắng nghe request ở 1 cổng và config từng request có router và method như nào thì làm gì, thích serve file hay trả về data gì đều được. Vd: server C#, NodeJS
+2 là server lắng nghe ở 1 cổng và tùy vào url như nào mà serve các file tương ứng. Thực là nó chỉ serve file chứ k có kiểu xử lý request.body hay truy cập database các thứ như kiểu 1, nếu có các xử lý đó thì phải viết ở trong file mà nó serve thì nó sẽ chạy code rồi trả lại kết quả, or config k chạy file mà trả lại luôn 1 file html bất kỳ. Nch là nó k lo logic server mà chỉ serve file, chạy file ở 1 thư mục
+
+
+-> Các cái hosting online với database online cũng chỉ là nó cung cho ta cái web server để ta nhét cái file front-end vào đấy, xong có cả database nx mà thôi
+VD: trên wordpress nó cho tạo front-end bằng giao diện, xong các cái máy chủ web và database(cần cho các bài viết chẳng hạn) thì nó cung ở tầng dưới hết luôn chứ thực sự tạo 1 webapp k đơn giản v.
+VD: wordpress trên docker ta cài thì phải cài apache server httpd, xong connect nó với wordpress, xong connect database của ta vào wordpress luôn -> như v ta ta mới xong 1 web app đầy đủ thủ công
+Wordpress cũng chỉ là 1 tool tạo website, khi ta dùng thủ công tự tạo front-end, webserver, database thì wordpress cung 1 template cho cấu trúc file như việc dùng trong docker, vào thấy mục lục, ấn vào php để hiện file -> đó là template của wordpress cung theo cấu trúc như v thôi. Server mặc định khi dùng wordpress kp là Apache mà là cái éo gì ấy, có thể check trong tab Network -> ấn 1 request bất kỳ -> mục Header kéo xuống có ghi tên web server
+
+
+-> Apache HTTP server: phần mềm web server miễn phí mã nguồn mở phổ biến nhất thế giới, kể cả dùng cho mục đích thương mại. Apache bảo mật tốt và có độ tùy biến cao. Quản trị viên có thể tắt, thêm chức năng, dùng các module bảo mật như chứng thực mật khẩu ok hết.
+Cơ chế: người dùng gửi request tới -> server tìm file cần trả lời đúng yêu cầu người dùng -> gửi lại cho người dùng => Mỗi request là 1 đơn luồng, dùng http protocol
+
+Người dùng tương tác với nó đơn giản bằng cách gửi 1 HTTP request tới 1 địa chỉ IP để nhận kết quả, thì địa chỉ IP đó chính là địa chỉ web server. Khi nói tới web server, ta đang đề cập tới góc độ phần mềm. Còn các server mà to đùng với phần cứng kinh khủng thì đang refer tới phần database lưu trữ và xử lý query nhiều hơn. Nó cũng là các thiết bị chạy phần mềm webserver, đủ hiện đại để xử lý rất nhiều request 1 lúc.
+
+Cả database và web server đều phải xử lý vấn đề quan trọng nhất là xử lý nhiều request đến đồng thời từ phía người dùng. Nếu 1 người gửi quá nhiều request đến IP của server mà đầu vào nhỏ, đầu ra lớn thì có thể gây ra tấn công DDOS. Điều này thường có thể ngăn chặn bằng việc xử lý thêm nếu 1 IP gửi quá nhiều request thì chặn
+

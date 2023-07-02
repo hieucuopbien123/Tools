@@ -1,0 +1,127 @@
+Mở rộng dần hệ thống cực lớn
+
+-> Đi từ mô hình basic ít người dùng: Website[Frontend - Backend - Database] chung 1 server duy nhất, thậm chí cả database cũng chung luôn trên máy chủ web
+
+Về sau mô hình AJAX ra đời mới tách độc lập: Database <-> Server <-> Client làm kiến trúc trở nên phân tán dần
+
+Ta cần dùng Rate Limit giới hạn request 1 user tới server để tránh 1 ip bắn request bừa bãi
+
+Để các file tĩnh trong cùng server database sẽ die server vì file tĩnh được request nhiều bởi nhiều người dùng, để riêng 1 con server khác cũng có thể chết con server đó. Ta có thể dùng các dịch vụ lưu trữ đám mây gọi là BLOB storage như Azure Blob storage, AMZ S3. Và có thể dùng 1 dịch vụ CDN như Cloudflare, Google Cloud CDN để giảm tải cho server. Nó cũng kbh chết vì tự phân tán ra nhiều server và user tự request tới server gần nhất.
+
+-> Dù tách được file tĩnh nhưng server API vẫn treo nếu nhiều người dùng. Có thể nâng cấp theo chiều dọc như tăng RAM CPU DISK nhưng kp giải pháp vĩnh viễn. Ta có thể nâng cấp ngang bằng cách thêm các máy chủ khác nhau. Nhưng ta muốn request đến 1 IP duy nhất nên dùng Load Balancer ở mức DNS. Nhưng hệ thống chưa quá to thì k cần đến mức đấy mà chỉ cần 1 Reverse Proxy
+
+Cơ chế của Forward Proxy và Reserve Proxy gần giống nhau: 
+Forward Proxy là cái trong 1 tổ chức ta điền vào để vào mạng như mạng ở trường bách khoa ấy: học sinh -> proxy -> internet. Nó là trung gian giữa người dùng và internet, có tác dụng ẩn danh người dùng, kiểm soát truy cập, cache dữ liệu, bảo mật chặn các yêu cầu độc hại.
+Reverse Proxy là cái để mọi người bên ngoài vào máy chủ của ta: customer -> internet -> Reverse Proxy(<-) -> server của ta. Reserve Proxy là trung gian giữa người dùng và máy chủ cuối với cơ chế y hệt. Nó giúp bảo mật chặn các yêu cầu k an toàn, cache data, load balancing.
+
+Ta thêm vài con máy chủ và 1 con reverse proxy để có mô hình:
+client -> call APIs -> Reverse Proxy -> API Server 1 (cluster) -> Database
+  ^                                  \> API Server 2 (cluster) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+Các con server cũng chỉ là y hệt nhau thôi, nó chỉ có vai trò xử lý dữ liệu và tương tác vói 1 database duy nhất. Nhưng có 2 nhược điểm: Các request cần phân bố đồng đều tới các server. Khi 1 client connect tới server sẽ tạo ra 1 session, các request sau cũng trong session đó sẽ có tốc độ nhanh hơn vì dùng lại connection cũ chứ kp tạo khởi tạo lại. Khi đó ta cần 1 cái load balancer lo. Load balancer có thể đứng trung gian như 1 reverse proxy (reverse proxy từ chỉ chung các thiết bị forward request thôi) 
+
+Apache server hay nginx là các phần mềm load balancer phổ biến
+F5 là 1 phần cứng chuyên dụng cho load balancer, được phát triển bởi công ty F5 Networks.
+Còn cấu hình chia sẻ session thì nginx apache đều có, trong Java cũng có TomCat. Apache Tomcat là một máy chủ ứng dụng web mã nguồn mở được phát triển bởi Apache Software Foundation. Nó là một máy chủ servlet và JSP (JavaServer Pages) và được dùng web Java.
+
+-> Nút cổ chai là database vì vẫn có nhiều request vào dữ liệu ít thay đổi mà lại hay được truy vấn, ta có thể dùng hệ thống cache. Có 2 loại cache là In-Memory Cache và Distribution Cache ngoài ra có thể tạo cache trên client or tạo bảng cache trên DB, cache trên server.
+
+- Với In-Memory Cache ta cache ngay trên RAM của các API Server. Nhưng nhiều cache có thể gây hết RAM và cần các giải pháp xóa cache lâu không dùng như: LRU(Least Recent Use) hoặc FIFO, LFU(Least Frequently Use)
+=> Vì kp ai cũng request như nhau nên đọc k có thì tìm trong DB, tìm được lại lưu vào cache. Tìm có dữ liệu trong cache là cache HIT, k có thì là cache MISS.
+
+Giả sử ta cache trên từng server nên nếu ban đầu client gọi vào server A được cache luôn ở server Anhưng về sau Reverse Proxy gọi vào server B k được cache lại mất tg. Ta phải dùng Hash thay vì các cách khác như Round Robin. Nhưng dùng thuật toán Hash đồng nghĩa 1 IP luôn request vào 1 server nhưng nếu server đó chết thì Reverse Proxy vẫn chỉ cho IP đó vào server cũ thôi, tương tự thêm server mới thì chả connect được. Họ fix bằng thuật toán Consistent Hashing or Rendezvous để đảm bảo mỗi client trỏ đến đúng server và k bị ảnh hưởng bởi vc thêm xóa 1 server (K đi sâu vào 2 thuật toán đó)
+
+- Với PP cache thứ 2 là Distribution Cache tức lưu cache ở hẳn server khác chứ không lưu trên server API của mình. Khi đó sẽ tốn thêm đường truyền vì dùng 1 server riêng để làm cache server và nếu server đó sập thì hệ thống cache cx đi. Nhưng ta có thể replica để cho nó tính khả dụng cao. Ưu điểm là cache tập trung lại 1 server thì việc cập nhập cache cũng dễ dàng hơn. Và nếu ta restart server API thì cache k bị mất còn In-Memory sẽ mất hết.
+
+=> Có thể kết hợp tạo cache nhiều tầng, memory MISS thì tìm distribution cache, distribution MISS thì lấy trong database
+Client --Call APIs--> Reverse Proxy     -> API Servers 1(In-mem cache) -> Redis Cluster, Database
+  ^              (Rendezvous Hashing)   \> API Servers 2(In-mem cache) /^
+  |
+Cloudflare <- Static content BLOB Storage
+
+-> Cache k thể xử lý hết 1 lượng database quá lớn hàng triệu người. Nếu xem nhiều mà ghi ít thì ta có thể chia mô hình master-slave:
+          Web server
+          /^  ^|  ^\
+         /    ||    \
+        /     |v     \
+    slave1 <-master-> slave2
+Đọc và ghi với master, chỉ đọc với các slave và 3 cái database đồng bộ với nhau. Do đọc nhiều hơn ghi nên dùng như v để giảm tải cho database chỉ đọc bằng cách chia ra nhiều database.
+VD database sản phẩm bán hàng thì 1 product có thể ghi vài lần nhưng có thể có tới 1 triệu người đọc nó đồng thời, do đó các database slave thường có RAM rất mạnh, master thì RAM yếu hơn. 
+Việc đồng bộ master vào slave có nhiều cách, nó giống như việc replica ra ấy. VD trong MySQL có tool Binlog giúp làm điều này
+
+Nếu dữ liệu mà lớn thì truy vấn của người dùng vẫn lâu. Ta fix với Sharding bằng cách chia dữ liệu nhiều phần rồi lưu ở các database khác nhau và dựa vào bảng shard để quyết định vào đâu lấy dữ liệu, sau đó lấy đồng thời. 
+VD: bảng user mà client request. Ta có thể chia ra theo chữ cái đầu của username. VD A lưu vào database A, B lưu vào database B. Lúc cần request user nào dựa vào bảng shard và ta chỉ tìm trong database tương ứng mà bây giờ số lượng dữ liệu trên mỗi database sẽ giảm và truy vấn nhanh hơn:
+122334556(Partition) -> 122(shard1) / 334(shard2) / 556(shard3) / ...
+
+Nếu những người tên bắt đầu bằng A, Ư, Ơ thì sẽ có cái được chọc nhiều, cái chọc ít(Celebrity Problem). Thực tế họ sẽ k dựa vào chữ cái đầu mà dùng hàm băm cho cân bằng nhưng kiểu gì cũng sẽ có chỗ nhiều chỗ ít(chỗ nhiều gọi là hotspot), lúc đó phải sửa hàm, sửa bảng shard hoặc tăng cấu hình cho con shard trâu kia. 
+
+=> Cách nào cũng có ưu và nhược, cách này implement khó
+Thực tế không phải lúc nào chia nhiều database ra cũng tốt, họ chỉ chia khi có nhu cầu thấy rằng tốc độ query bị chậm. Khi đó có thể thêm 1 trường order vào bảng tăng từ 1. Nếu data có order <= 1 triệu thì lấy ở bảng 1, > 1 triệu thì lấy từ bảng 2
+
+=> Dữ liệu nằm trên các server khác nhau thì join ntn? Ta có thể lưu dư thừa dữ liệu trong các DB shard để đỡ phải join và cập nhập dữ liệu master DB bằng 1 worker. Tức là cái shard ta chia ra chỉ để đọc nhanh còn dữ liệu chuẩn vẫn nằm trên 1 DB master có thể đọc ghi. DB master gọi là Single Source of Truth(SSoT) đảm bảo cho các dữ liệu shard kia chủ yếu để đọc. Sharding như 1 giải pháp đọc nhanh hơn 1 lượng dữ liệu cực lớn mà cache k thể xử lý được.
+
+-> Khi có nhiều server, các server toàn giao tiếp vói nhau thông qua fetch API sẽ rất loạn và bị chậm. Mô hình kiểu: A tự request tới B nếu cần database từ B, B trả lại data cho A
+Cải thiện bằng Message Broker. MB là 1 thành phân trong kiến trúc phân tán sử dụng truyền data giữa các hệ thống. VD khi dùng microservice rất hay dùng để trao đổi data giữa nhiều máy.
+
+Mô hình thường dùng nhất của MB là pub-sub kết hợp message queue. 
+- Ở mô hình pub-sub thì A publish event, các B sẽ subscribe để thực hiện. A chỉ cần publish là kết thúc việc handle request, tiếp theo B xử lý bất đồng bộ độc lạp. Như v server A xử lý rất nhanh, kbh bị quá tải
+- Mô hình message queue thì các message cần gửi qua các ứng dụng sẽ gửi vào queue và kết thúc xử lý. Các ứng dụng liên tục check queue và lấy ra xử lý
+
+Nhưng thực tế bh người ta toàn dùng kết hợp cả 2. Publisher sẽ gửi data vào 1 queue chung rồi kết thúc xử lý. Các subscriber lấy từ queue ra xử lý lần lượt từng cái. 
+Điểm lợi: Các subscriber k bị quá tải (như khi chỉ dùng pub-sub) vì nó lấy từng cái từ queue xử lý chứ kp tất cả message đến cùng lúc; Đảm bảo message đến theo đúng thứ tự, tránh trường hợp message cần xử lý trước lại đến sau; Khi cần thêm server hay hệ thống mới chỉ cần tạo rồi cho subcribe mà k cần sửa publisher
+
+Nếu hệ thống pub-sub chết thì message bị mất hết. Để fix, ta phải lưu message vào DB và chờ hệ thống pub-sub sống lại thì tiếp tục lấy ra publish đi. Gọi là Inbox Outbox Pattern - 2 pattern thg dùng trong kiến trúc phân tán.
+Inbox Pattern có Inbox (Message Receiver) nhận thông điệp từ các nguồn và định tuyến đến các thành phần phù hợp trong hệ thống. Nó giúp tách biệt việc nhận và xử lý thông điệp
+Outbox Pattern có Outbox (Message Sender) nhận thông điệp từ thành phần gốc và gửi tới các đích tương ứng. Nó giúp tách việc gửi ra, thành phần gốc éo cần biết có các đích nào cần gửi mà cứ để Outbox lo.
+
+=> ref tới ảnh "Message Broker"
+User call API thực hiện change data trong User Microservice -> Module Rest API nhận được sẽ lưu message data vào bảng Data, lưu thông tin event cần publish vào bảng Outbox. Lưu vào 2 database đó trong 1 transaction atomic -> Module Rest API notify tới Publisher và kết thúc request -> publisher lấy từ database Outbox ra message và publish qua event bus -> khi event được publish qua event bus thành công thì xóa event đó khỏi bảng Outbox. Ở bước này nếu gửi thất bại, VD bị cúp điện chẳng hạn thì bảng Outbox vẫn lưu event và chờ có điện thì check database có event nào thì gửi đi thôi -> Subscriber của Logic Microservice nhận về message sẽ lấy data để xử lý từ bảng Data vì trước lưu vào bảng đó -> Sau đó xử lý logic bth
+
+Nếu Subscriber của Logic Microservice nhận và xử lý bị lỗi. Nó lấy lại message đó lần nữa từ DB để thực hiện có sao không? Điều này là tùy vào loại message, ta nên gắn thêm 1 trường idempotent vào message để set xem 1 message có bị thay đổi giá trị khi thực hiện lại nhiều lần không. Nếu nó không thay đổi giá trị sau khi thực hiện xử lý thì rõ ràng xử lý lỗi, ta hoàn toàn lấy ra xử lý lại được. Nhưng nếu trường này là false thì phải xử lý tùy nghiệp vụ, nó đang làm dở và ta muốn làm tiếp hay làm thủ công set lại từ đầu, phải quản lý được mọi TH. 
+
+VD ở trên thì User Microservice có thể là 1 server leader và có nhiều server khác trong trạng thái dự phòng
+
+-> Việc dùng load balancing đã là 1 cơ chế dự phòng server API vì 1 server die thì load balancing tự động ref tới 1 server khác. Nhưng nhiều TH để đảm bảo toàn vẹn dữ liệu, mỗi worker k chạy đồng thời mà ta chỉ cần chạy 1 con thôi và task cũng đơn giản. Nhưng nếu worker đó die sẽ chết toàn bộ hệ thống nên hệ thống phân tán dùng thêm Leader Election. 
+Nó dùng thêm nhiều con server khác dự phòng và ở 1 thời điểm, chỉ có 1 con được chọn làm leader chạy. Nếu leader die sẽ dùng thuật toán bầu con khác lên thay thế, trong lúc đó ta có thể fix con bị hỏng. Leader election cũng dùng trong TH 1 máy chạy 1 ứng dụng bằng nhiều processes. Nếu 1 instance die thì 1 instance khác thế chỗ. 
+
+Cơ chế bầu leader chi tiết học trong môn Distributed System. Ở cấp độ cao, họ k implement chi tiết mà dùng các thuật toán như Paxos hay Raft. Ở cấp độ cao hơn, họ dùng luôn các phần mềm hỗ trợ các thuật toán như zookeeper và etcd giúp implement dễ hơn:
+Zookeeper dùng trong Kafka
+Etcd dùng trong K8s
+
+2 tool này giống như 1 cái db lưu key-value có tính highly available và strongly consistent. Highly available là bền vững khó bị ngỏm. Strongly consistent là tính chất khi lấy hay thêm dữ liệu từ đâu trong hệ thống phân tán thì hoặc là kết quả lấy ra là giống nhau, hoặc là không lấy được gì cả. Bản chất nó cũng chỉ implement 1 trong 2 thuật toán trên.
+VD etcd như 1 db lưu cặp key-value chứa IP của leader. Nếu leader chết sẽ chạy thuật toán bầu và lưu leader mới.
+
+-> Hệ thống vẫn chưa tốt khi search data vì hầu hết các kiểu DB thông dụng xử lý search kém. Do đó họ dùng thêm 1 loại database chuyên để search.
+ElasticSearch là loại database có tốc độ search rất nhanh. Nó được phát triển dựa trên Lucene của Apache.
+Users -- LoadBalancer -- Server1 --Read-- Cache --Not exist in cache-- Slave
+                      -- Server2 --Write-- Master
+                                 --Search-- ElasticSearch      
+=> Đương nhiên là cả DB Slave và ElasticSearch đều phải đồng bộ với database master bằng các cơ chế mỗi khi write
+
+Bên cạnh đó, họ vẫn phải chọn lọc thủ công trong 1 số TH. VD có 1 vài sản phẩm mới ra mắt được quá nhiều người truy cập (hot data), họ sẽ bỏ vào cache trước để người dùng lấy từ đó nhằm giảm tải database. Data ít truy cập gọi là cold data.
+
+-> Core hệ thống thì ok, nhưng thỉnh thoảng treo server database, nghẽn mạng, quản lý cần biết request nào bị lỗi thì phải có 1 cơ chế thông báo. Có 3 loại:
+1) Logging: Log các vấn đề trong hệ thống. 
+Đơn giản nhất là ghi vào file các kiểu log Error, Info hay Debug như kiểu system_log.txt nhưng làm v sẽ khó tìm lỗi, khó thống kê tần suất lỗi vì phải đọc file thủ công. 
+Nếu lưu log vào DB thì k ổn vì số lượng log mà lớn sẽ rất lâu để thống kê truy vấn, ảnh hưởng tới DB chính. 
+Họ xây dựng 1 hệ thống log riêng như ELK Stack:
+Log ---> logstash xử lý data ---> elasticsearch lưu data ---> kibana visualize data
+=> ELK Stack có tốc độ truy cập nhanh, biểu diễn data trực quan, tách rời k ảnh hưởng tới performance hệ thống chính. 
+Ta cũng có thể log hành vi của người dùng và thống kê đưa ra tính năng phù hợp, VD có thể dùng Google Analytic.
+
+Nếu ta cần log những request bị lỗi có thể dùng hệ thống log kiểu APM (application performance monitoring) có tích hợp sẵn trong ELK Stack sẽ ghi thời gian phản hồi và số lượng request lỗi cho ta. 
+
+2) Monitor: sẽ lưu các thông tin cần quản lý lại và phân tích dự đoán các vấn đề. Nó khá giống logging nhưng logging lưu log ví dụ khi người dùng thực hiện action gì thì lưu lại. Còn monitor thì lưu lại trạng thái của server để quản lý.
+
+Basic nhất là cứ lâu lâu query vào các server 1 lần để xem trạng thái nó như thế nào, busy, đang rảnh hay đã sập để còn fix. Nhưng làm v sẽ tốn công.
+
+Do đó, họ dùng 1 hệ thống Prometheus + Grafana.
+Prometheus cũng chỉ 1 realtime database mà server lưu data vào. Còn Grafana hỗ trợ đọc data (hỗ trợ nhiều ngôn ngữ) và hiển thị lên (có thể dùng remote_write architecture trong ảnh).
+VD ta có thể dùng Prometheus để ghi bất cứ thứ gì như tình trạng RAM, CPU, DISK của server. Ta cũng có thể implement báo hiệu khi server bị hết RAM dự đoán khả năng bị lỗi. 
+
+3) Alert là hệ thống cảnh báo nếu biết được lỗi sắp/đã/đang xảy ra. Khi đó ta có thể implement tự động gửi mail cho admin vào fix chẳng hạn.
+
+-> Ngoài ra còn có các hệ thống như Stream polling, MapReduce,... chưa học
+

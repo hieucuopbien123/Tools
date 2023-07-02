@@ -1,0 +1,32 @@
+Swagger
+=> ref tới "C# / ASP.NET"
+
+
+
+# Basic
+OpenAPI Specification là 1 định dạng mà mô tả API dành cho REST APIs. OpenAPI Spec có thể viết bằng YAML hay JSON.
+Swagger là tool open-source dùng để xây dựng OpenAPI Specifications, chỉ cần code và generate ra page API chứ k thao tác với giao diện. 
+
+//!!!!
+Swaggerhub là công cụ đầy đủ của swagger. Mặc định là ta dùng Swaggerhub. Để dùng chỉ cần sign up và dùng online luôn: https://app.swaggerhub.com/home
+
+Ngoài ra trong các ứng dụng như ASP.NET hay nodejs có nhiều thư viện hỗ trợ dùng swagger sẵn mà ta k cần tải gì thêm từ trang chủ. Nó có thể tự add swagger vào dự án của ta luôn mà k cần tải gì thêm. Có thể chỉ là bản swagger ui chứ k đầy đủ bộ tool.
+
+Swaggerhub là hợp của 3 tools rời rạc là:
+Swagger Editor giúp design APIs or edit có sẵn bằng YAML config: https://swagger.io/tools/swagger-editor/
+Swagger Codegen tool generate code từ file config: https://swagger.io/tools/swagger-codegen/
+Swagger UI chỉ là 1 ứng dụng dùng HTML, CSS, JS và file config để tạo ra 1 file index.html là trang web biểu diễn API: https://swagger.io/tools/swagger-ui/
+Tức Swagger UI chỉ là 1 phần của Swaggerhub, với các dự án đơn giản có thể chỉ cần mỗi swagger ui thì tải nó về từ git rồi add vào project là có file index.html lưu api, chỉ cần host ở 1 port là có page api rồi. 
+
+=> Từng tool của Swaggerhub đều có thể tải về dùng local từ github nhưng thg dùng luôn Swaggerhub online chung mọi tool cho tiện. Or tải thư viện nếu dự án có hỗ trợ sẵn
+
+
+
+# Viết API 
+Lấy mẫu edit từ: https://editor.swagger.io/
+
+Keyword style và explode mô tả cách truyền tham số dạng mảng hay object vào url
+components: Mô tả các kiểu object chung trong type trả về. VD trả ra kiểu Pet xong mô tả bên dưới kiểu Pet đó có những trường gì
+securitySchemes: Các API bảo mật phải cấu hình swagger để truy cập thông qua securitySchemes
+
+

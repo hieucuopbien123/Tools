@@ -1,0 +1,322 @@
+Apache 
+
+
+
+# Mô hình web
+# Mở rộng dần hệ thống cực lớn
+
+
+
+# Basic
+-> Cài đặt
+Cài dùng cho window:
+Download apache -> a number of third party vendors -> Apache Lounge -> cài 64bit -> giải nén vào ổ C -> vào bin -> chạy httpd.exe -> vào browser: localhost -> hiện It works!! là chạy thành công
+
+Có thể cài có sẵn trong xampp or docker
+
+Tùy bản Apache mà được xây dựng trên Visual C Redistributiuon for Visual Studio phiên bản khác nhau mà phải có Visual Studio mới chạy được apache
+Ta giải nén vào ổ C mà kp là ổ khác vì cấu hình này được chỉnh sẵn trong file config là DocumentRoot rồi nên nếu ta dùng thư mục khác thì phải thay đổi config thư mục như trong docker ta set với image httpd ấy
+
+-> Tương tác file httpd.conf: vào C:\Apache24\conf\httpd.conf
+- Tắt warning thiếu servername: 
+uncomment #ServerName www.example.com:80 -> sửa thành: ServerName localhost
+
+- Bật mod_rewrite trong Apache trên localhost: cần thiết khi dùng Wordpress Permalink hay rewrite cho htaccess
+uncomment: #LoadModule rewrite_module modules/mod_rewrite.so trong file config -> sửa: AllowOverride None thành AllowOverride All 
+(K chỉ Apache mà nhiều phần mềm tương tác yêu cầu phải bật mod_rewrite tương tự)
+
+- Cài service cho Apache: mở Services của window sẽ k thấy Apache
+cmd -> cd C:\Apache24\bin -> httpd -k install  => 1 service tên là Apache2.4 đã có trên Service của window. Ta có thể chỉnh tên tùy ý nếu muốn: httpd -k install -n "ten-service" -> Bh ta có thể start, stop, restart tùy ý service này trong Service của window or dùng cmd:
+net start Apache2.4
+net stop Apache2.4
+=> Khi install như v thì service của Apache sẽ tự khởi động cùng với window, có thể chỉnh thành Manual ở Service của window or dùng commandline tắt dịch vụ đi: sc delete Apache2.4
+
+- Trong Apache có rất nhiều module tùy chỉnh: bh ta thử dùng module mod_rewrite của apache để viết lại url trong config hiển thị file about.html khi dùng url <host>/about
+Vào file config -> uncomment module mod_rewrite -> vào <Directory> mà gọi htdocs và thêm: 
+RewriteEngine on # để bật Rewrite, cần dùng nó ở mỗi thư mục muốn nó hoạt động
+RewriteRule ^about$ about.html [NC] # để chuyển hướng mọi request bắt đầu và kết thúc bằng about ở url(Vd: /about) thì sẽ lấy file about.html
+
+-> Command basic:
+Thông tin cơ bản về Apache:
+httpd -V
+httpd -M
+
+Khởi chạy Apache (start), dừng (stop), khởi động lại restart. VD: httpd -k start
+Khởi chạy Apache (nối terminate): httpd -DFOREGROUND
+
+
+
+# Cách dùng RewriteEngine RewriteRule RewriteCond RewriteBase
+=> Nhờ mẹ chat GPT viết hộ cho
+
+- Cú pháp: RewriteEngine Pattern Substitution [flags]
+với Pattern là RegExp. VD: ^/?([a-z])/(.*)$ và dùng $1, $2 để lấy ([a-z]) và(.*)
+Substitution là url mới 
+flags gồm: [L] là nếu rule này thực hiện thì các RewriteRule ở sau nó sẽ bỏ qua; [F] trả về mã 403 cấm truy cập (Forbidden); [G] trả về mã 410 file bị xóa;[R=code] chuyển hướng URL với mã code chỉ ra (ví dụ [R=301]); [NC] rule là no case sensitive, truyền vào lowercase hay uppercase đều match.
+[N] Rule lặp đi lặp lại cho đến khi kết quả URL không còn bị thay thế. Có thể chỉ ra số lần lặp cụ thể như [N=100].
+VD: RewriteRule ^example/(.*)$ index.php?category=$1 [N] 
+Ta truyền vào /example/foo sẽ chuyển thành index.php?category=foo và flag [N] sẽ khiến server chạy lại quá trình rewirte từ đầu với url mới là index.php?category=foo, nếu match thì lấy
+
+- Có thể có nhiều cái RewriteCond đứng trước 1 RewriteRule để định nghĩa ra các điều kiện thỏa mãn mới chạy vào RewriteRule. 
+Cú pháp chung là: RewriteCond TestString CondPattern [flags]
+=> Nó có thể check url, biến môi trường, method. Nếu ĐK đúng thì RewriteRule gần nhất sau nó được dùng
+[flags] của nó VD [OR] là toán tử kết hợp 2 RewriteCond(mặc định là [AND])
+CondPartern là regexp kiểm tra sự phù hợp của TestString. VD:
+-s là check TestString là pathname tới 1 file và check file đó tồn tại và k empty (size > 0) thì mới là true
+-l là check symbolic link
+-d là kiểm tra url là 1 directory và check directory đó tồn tại
+TestString là chuỗi chứa tham số kiểm tra. Có thể chứa biến toàn cục %{NAME_OF_VARIABLE} là các biến gửi đến như QUERY_STRING, REMOTE_ADDR, REMOTE_HOST, REQUEST_METHOD, HTTP_USER_AGENT, HTTP_HOST
+VD: check trình iPhone hay Android truy cập kiểm tra USER_AGENT
+RewriteCond  "%{HTTP_USER_AGENT}" "(iPhone|Android)" => check xem biến này của thiết bị có dùng 2 hđh này k
+
+VD có 2 cái RewriteCond này trước RewriteRule thì phải thỏa mãn cả 2 cái RewriteCond mới đi xuống:
+1) RewriteCond %{DOCUMENT_ROOT}/$1 !-f
+2) RewriteCond %{HTTP_POST} ^(admin.example.com)$
+3) RewriteRule ^/?([a-z]+)/(.*)$ /admin.foo?page=$1&id=$2&host=%1 [PT]
+Giải thích:
+1) DOCUMENT_ROOT là biến server lưu url tới root directory của server. Còn $1 là ref sang phần sau của url. Còn !-f là chỉ định file k tồn tại. Tức nó check request url phải thỏa mãn pattern %{DOCUMENT_ROOT}/$1 và path đó k gọi tới 1 file nào của server hoặc gọi tới 1 file k tồn tại ở server thì thỏa mãn
+2) Check request là method POST tới url admin.example.com
+3) Đổi url:
+/? là có thể có slash hoặc không
+$1 là refer đến cục ([a-z]+) đằng trước, $2 là (.*) ở đằng trước, %1 là phần host ở trước cái / đầu tiên
+[PT] tức là url sau khi rewrite sẽ pass qua server và sẽ k bị rewrite lần nào nữa ở phía sau
+
+- Lệnh RewriteBase thiết lập URL cơ sở cho thư mục. Vd:
+RewriteEngine on
+RewriteBase /new/path
+RewriteRule ^about$ about.html 
+=> Nó sẽ tự hiểu rằng base URL là /new/path nên tự hiểu about.html là /new/path/about.html
+
+VD:
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteRule ^.*$ - [L]
+...Các RewriteRule khác
+=> Nếu %{REQUEST_FILENAME} là url tới 1 file tồn tại và k empty hoặc là url tới 1 file và file đó symbolic link 
+RewriteRule ^.*$ - [L] thì ^.*$ match với mọi url và - là k thực hiện rewrite gì cả, option [L] cho thấy đây là last rule được thực hiện với request này nếu thỏa mãn, bỏ qua các rule bên dưới
+
+=> Các RewriteCond liên tiếp chỉ áp dụng với 1 RewriteRule ngay sau nó. Các RewriteRule bên dưới k bị ảnh hưởng. Nếu 1 RewriteRule k có RewriteCond nào phía trên, khi file chạy đến nó sẽ luôn được thực hiện vì k có đk gì.
+
+VD:
+#Chuyển hướng 1 URL cụ thể
+RewriteEngine  on
+RewriteRule    "^/url-cu\.html$"  "url-moi.html"  [R=301]
+#Chuyển hướng thư mục news sang domain (server mới)
+RewriteRule   "^/docs/(.+)"  "http://new.example.com/docs/$1"  [R,L]
+=> Flag [R] là redirection, nó tạo external redirect cho browser nhận được response phải navigate sang url mới và gửi lại request url mới.
+=> Vd "http://example.com/docs/document1" sẽ thành "http://new.example.com/docs/document1"
+
+VD:
+RewriteCond "%{HTTP_HOST}" "!^www\." [NC]
+RewriteCond "%{HTTP_HOST}" "!^$"
+RewriteRule "^/?(.*)"      "http://www.%{HTTP_HOST}/$1" [L,R,NE]
+=> RewriteCond 1 check giá trị của HTTP_POST k bắt đầu bằng www, ss dạng non case-sensitive
+=> RewriteCond 1 check giá trị của HTTP_POST không empty
+=> RewriteRule thêm www cho url thôi. Chú ý là RewriteRule có tham số 1 chỉ tính từ phần sau host name bắt đầu bằng "/...", option [NE] là bảo là phần $1 ta lấy là no escaped (k chứa khoảng trắng %20) 
+
+Vd:
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP_HOST} !^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
+RewriteCond %{HTTPS} on
+RewriteCond %{HTTP_HOST} !^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+=> Tương tự như trên nhưng HTTPS là on hay off để check connection có SSL/TLS k
+
+VD:
+RewriteCond "%{HTTP_REFERER}" "!^$"
+RewriteCond "%{HTTP_REFERER}" "!www.example.com" [NC]
+RewriteRule "\.(gif|jpg|png)$"    "-"   [F,NC]
+=> HTTP_REFERER là url của page gọi tới page này. Vd user click link1 và redirect sang link2, HTTP_REFERER ở đây là link1. Đầu tiên check giá trị này k empty. Sau đó ta lọc các trang web mà khác www.example.com (non case-sensitive) thì cấm k cho láy các file ảnh đuôi gif, jpg, png và trả về lỗi Forbidden
+=> Ta thg dùng để cấm các trang web khác lấy url ảnh hiển thị ở trang của họ để tránh mất bằng thông
+
+VD:
+RewriteEngine On
+RewriteRule ^.*$ index.php [NC,L]
+=> Mọi truy vấn khác đều chạy file index.php
+
+VD phân tích:
+RewriteEngine On
+RewriteCond %{REQUEST_URI}::$1 ^(/.+)/(.*)::\2$
+RewriteRule ^(.*) - [E=BASE:%1]
+RewriteRule ^(.*)$ %{ENV:BASE}/index.php [L]
+
+=> RewriteCond 1 check %{REQUEST_URI}::$1 phải match với ^(/.+)/(.*)::\2$ 
+%{REQUEST_URI}::$1 rất phức tạp. Trong cấu trúc url yourdomain/mycontroller/myaction thì $1 là pattern trong cái url sau khi xóa bỏ prefix dẫn tới server và cái directive RewriteRule hiện tại. Ví dụ server là http://mydomain.tld/zend/mycontroller/myaction và để dẫn tới RewriteRule này ta cần tới /mycontroller/myaction thôi thì $1 là /mycontroller/myaction. NN là vì base của ta là /zend mà ta đã set bằng RewriteBase từ trước chẳng hạn. Tức %{REQUEST_URI}::$1 sẽ là /zend/mycontroller/myaction::/mycontroller/myaction
+(/.+) thì "." match mọi char trừ new line, "+" bảo là ký tự trước đó có thể xuất hiện 1 or nhiều lần. Tức (/.+) match mọi câu bắt đầu bằng / mà k có new line. Còn (.*) tương tự nhưng dấu * bảo là ký tự có thể xuất hiện 0 or >0 lần
+Ở đây ^(/.+) sẽ bắt từng cục trong uri bắt đầu bằng /, trừ cục cuối cùng bắt đầu bằng / sẽ bị bắt bởi phần sau là /(.*) => Còn phần sau :: phải match với \2 là back ref tới group thứ 2. 
+Vd ở đây chỉ nhờ cái url bên trên, có nhiều cách chia group. Group 1 là /zend, group 2 là /mycontroller/myaction. Hoặc group 1 là /zend/mycontroller, group 2 là /myaction,... => Thì ở đây cách chia đầu tiên mới thỏa mãn ::$1 giống với ::\2
+
+=> RewriteRule 1 sẽ k rewrite url. Nó gán Environment variable BASE là %1, ở đây %1 là string match đầu tiên trong RewriteCond, cũng là /zend
+
+=> Nếu thỏa mãn điều kiện thì 1 biến env mới là BASE sinh ra mang giá trị /zend và được dùng ở ngay RewriteRule 2, nếu không thì khi RewriteRule 2 thực hiện thì BASE sẽ là empty. Ở trên thỏa mãn thì RewriteRule 2 sẽ biến mọi url thành /zend/index.php, còn k thỏa mãn thì sẽ biến mọi url thành /index.php
+
+VD: Trong file htaccess
+<IfModule mod_rewrite.c>
+  RewriteEngine on
+  RewriteRule ^$ public/ [L]
+  RewriteRule (.*) public/$1 [L]
+</IfModule>
+=> Mọi call tới root directory sẽ call tới public folder
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f  => đảm bảo request path kp file name
+    RewriteCond %{REQUEST_FILENAME} !-d  => đảm bảo request path kp directory
+    RewriteRule ^(.*)$ index.php?url=$1 [PT,L] => đảm bảo mọi call tới index.php?url=PATHNAME
+</IfModule>
+=> Làm như v để đảm bảo mọi call đều qua tay index.php trừ images, js, cs file bth
+
+
+
+# Module trong apache
+Trong apache có 2 loại module: 
+- Static module tích hợp sẵn trong mã chạy Apache từ khi build code và httpd -M sẽ in ra hết
+- Shared là module nằm trên 1 file độc lập mà ta cấu hình để khi Apache chạy nó tải vào
+Các module nạp vào bằng chỉ thị LoadModule và ta comment hay uncomment để quyết định dùng hay k. Các module là các file .so
+
+VD: alias_module là module mở rộng của mod_rewrite, cung cấp chỉ thị Alias, AliasMatch, Redirect, RedirectMatch thay thế cho nhiều TH của mod_rewrite đơn giản hơn. Ánh xạ url ngắn gọn đến vị trí thật trên đĩa. VD: 
+Redirect 301 "/three" "http://example.com/other" # Chuyển hướng 1 url với mã 301
+RedirectMatch "(.*)\.gif$" "http://other.example.com$1.jpg" # Chuyển các file .gif sang một domain mới
+
+VD: deflate_module nén file trước khi tải về cho user
+Ví dụ file .html, .xml, .js, .css sẽ được nén trước khi trả về cho user:
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+
+VD: allowmethods_module
+Chỉ cho phép một số phương thức HTTP Request gửi đến (POST, GET, PUT, DELETE ...) bằng chỉ AllowMethods
+Ví dụ cho phép GET, POST: 
+AllowMethods GET POST OPTIONS
+=> URL https://xuanthulab.net/cac-module-trong-apache.html liệt kê các module và vai trò
+
+VD: mod_access_compat giúp xác thực quyền truy cập cơ bản. Các chỉ thị của module này có hiệu lực ở cấu hình <Directory>, <Files> và <Location>
+Các chỉ thị:
+Allow from all|host|env
+Allow from all     # Tất cả được truy cập
+Allow from 123.123 # Được phép từ IP
+=> Có thể cho phép truy cập từ biến được chỉ ra như all (tất cả) hay từ một IP..
+Deny  from all|host|env     # Từ chối cho truy cập
+Order Deny,Allow  # Tổng hợp Deny trước rồi Allow
+Order Allow,Deny  # Tổng hợp Allow trước rồi Deny
+=> Ví dụ chỉ chấp nhận truy cập từ mydomain.com:
+Order Deny,Allow
+Deny from all
+Allow from mydomain.com
+
+
+
+# Setting của Apache
+-> Các thiết lập mặc định là:
+Document root Directory: /var/www/html or /var/www
+File cấu hình: httpd.conf
+Cổng HTTP mặc định: 80 TCP
+Cổng HTTPS mặc định: 443 TCP
+Log truy cập tại: /var/log/httpd/access_log
+Log ghi lại lỗi tại: /var/log/httpd/error_log
+Lệnh khởi động lại Apache: service httpd restart
+
+Cập nhập Apache với:
+yum update httpd
+apt-get install apache2
+=> Đây là command trong linux 
+
+VD: 
+<Directory />
+  Options None
+  Order deny,allow
+  Deny from all
+</Directory>
+=> Options None k cho phép User bật lại thiết lập (VD cố tính bật thông qua file htaccess)
+Deny from all để k ai được quyền truy cập thư mục gốc
+
+VD: Ta có thể giới hạn kích thước gửi đến, mặc định là k giới hạn:
+<Directory "/var/www/myweb1/user_uploads">
+  LimitRequestBody 512000//k load được quá 512kb trong request
+</Directory>
+
+-> CGI(Common Gateway Interface) phân biệt tránh nhầm với CGI(Computer-Generated Imagery) trong kỹ xảo điện ảnh
+CGI được viết bằng Perl or C hoặc có thể chỉ là 1 shellscript đơn giản. Để tương tác server-client và các server với nhau. VD client gửi 1 form lên server thì nếu nhận được những thông tin phức tạp thì server sẽ k trực tiếp xử lý công việc này mà chuyển cho các CT khác gọi là gateway xử lý. CGI Script chính là CT chạy gateway trên WebServer. 
+Quy trình: Trình duyệt chuyển dữ liệu đến server -> server chuyển đến 1 CGI Script -> CGI Script xử lý và có thể chuyển cho 1 ứng dụng khác nếu cần thiết, sau đó gửi dữ liệu xuất ra cho web server -> web server chuyển dữ liệu lại cho trình duyệt
+CGI script cũng có thể xác nhận định danh của user và những thông tin về password của họ, cấp cho user quyền truy xuất theo những giới hạn của Web site
+
+VD: mod_actions để thi hành CGI Script dựa theo kiểu file or method đến. 
+Cú pháp: Action action-type cgi-script [virtual]
+Thì action-type là MIME được thêm vào nhờ mod_mime bằng chỉ thị AddType như image/jpeg
+cgi-script là vị trí của CGI Script
+virtual thêm vào để loại bỏ các Handler phía trước
+VD: # Chạy image.cgi khi mở file .gif
+Action image/gif /cgi-bin/images.cgi
+
+VD: # Mở .php bằng php.cgi
+AddHandler my-file-type .php
+Action my-file-type "/cgi-bin/php.cgi"
+
+VD: # Thiết lập một Handler mới trong Virtual Host
+<Location "/news">
+  SetHandler news-handler
+  Action news-handler "/cgi-bin/news.cgi" virtual
+</Location>
+
+VD: Chạy CGI dựa theo phương thức gửi đến với chỉ thị Script.
+Script POST "/cgi-bin/postcontent.cgi" => gặp post thì chạy CGI Script này
+
+
+
+# Dùng Handler 
+Là cơ chế được thi hành khi 1 file nào đó được apache gọi đến. Điều đó có nghĩa là mỗi kiểu file .php, .html, .cgi có handler riêng. Có loại tải vào bằng Module như php, có loại có sẵn trong Apache. Các Handler mặc định tích hợp sẵn là:
+default-handler : sử dụng phục vụ các nội dung tĩnh (như các file ảnh .jpg ...)
+send-as-is : (mod_asis) - Apache gửi file nhưng không có hầu hết phần header thông thường
+cgi-script : handler này thi hành file như cgi script
+server-info : lấy thông tin server
+server-status : lấy trạng thái server
+type-map : phân tích file, ánh xạ đến nội dung cần thiết
+
+Handler cũng được gán bằng một CGI script được kích hoạt bởi Action, VD khi khi gọi đến file có phần mở rộng .xyz thì xử lý file đó với script CGI "/cgi-bin/program.cgi":
+# Files of a particular file extension
+AddHandler my-file-type .xyz => tạo 1 handler mới tên là "my-file-type" xử lý mọi file có đuôi .xyz
+Action my-file-type "/cgi-bin/program.cgi"
+
+VD: thêm vào VirtualHost thiết lập:
+<Location "/server-info">
+  SetHandler server-info 
+</Location>
+=> Khi gọi đến địa chỉ /server-info thì Handler có sẵn của apache là server-info sẽ thi hành và trả về toàn bộ thông tin của Apache Server. Tương tự với handler server-status.
+
+VD: Xử lý trong file httpd.conf
+# Thêm một hander
+AddHandler handler-name extension
+# handler-nam là tên handler
+# extension là phần mở rông của file gắn với handler (php, html ...)
+
+#Loại bỏ Handler
+RemoveHandler extension
+# extension là phần mở rông của file gắn với handler cần bỏ
+
+# Thiết lập hander cho một nhóm file phù hợp với cú pháp: SetHandler handler-name
+VD: Các file .php sẽ mở bằng handler có tên application/x-httpd-php
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+1 số PHP Handler có thể sử dụng với Apache như CGI, DSO, FPM, FCGId, suPHP
+Apache 2.0 Handler là Handler PHP mặc định trong Apache/Php, nó thiết lập tính an toàn cao bằng cách chạy các script php với user là nobody hoặc apache, tuy nhiên nếu dùng suPHP thì an toan hơn nhiều, nhưng suPHP không còn được duy trì cập nhật (bản cuối 2013 suphp.org)
+
+FastCGI Handler
+FastCGI kế thừa từ CGI nó được tùy chỉnh để giảm tải sự tương tác giữa script CGI và Webserver, cho phép Server phụ vụ được nhiều yêu cầu cùng lúc hơn.
+
+suEXE giúp chạy CGI dưới 1 user khác với user đang chạy Apache HTTPD, mặc định thì cùng user.
+Khi sử dụng tính năng này mục đích để gán user cho những VirtualHost khác nhau. Ta nên quản lý user chặt chẽ, nếu k thì k nên dùng suEXE
+httpd -V sẽ ra -D SUEXEC_BIN="/apache/bin/suexec" là vị trí lưu suEXE
+Để sử dụng suEXE trên VirtualHost. VD:
+<VirtualHost 123.123.123.123:80>
+    ....
+    SuexecUserGroup abc xyz
+    ....
+</VirtualHost>
+=> Ở host địa chỉ và cổng trên nếu chạy CGI với FastCHI or PHP-FPM thì nó sẽ chạy tới user là abc và group là xyz
+
+=> Dừng lại publish global, dùng VirtualHost, self-sign SSL => để học tiếp phải đăng nhập được vào Router của wifi cơ
+
+

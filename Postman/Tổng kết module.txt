@@ -1,0 +1,48 @@
+POSTMAN
+
+
+
+# Basic
+POSTMAN là tool giúp test API. 
+
+Tải POSTMAN về desktop or dùng bản web đều được. Đk tk để lưu.
+
+-> Tạo workspace cho từng project khác nhau. 
+Phải tạo 1 workspace trước khi dùng mọi request trong POSTMAN 
+
+Workspace settings -> delete workspace để xóa workspace
+create workspace -> ta có thể thêm 1 http request ở 1 tab mới và lưu lại
+History cho phép xem lịch sử request ở workspace hiện tại.
+
+-> Collection giúp nhóm các request lại thành 1 cụm. 
+
+Tính năng run collection để chạy 1 collection nhiều lần. Khi ta dùng nó sẽ gửi request của mọi api trong collection đó. Iterations là số lần gửi liên tiếp và delay là tg delay giữa mỗi lần gửi. Bởi vì nếu gửi liên tiếp nhiều request mà data nhận được lớn thì server có thể lỗi k xử lý đc nên cần thêm delay ở các TH đó. Tính năng này chỉ cho ta test khả năng chịu tải xem request thành công hay k chứ k xem được kq
+
+-> Để POST, ta chuyển sang method POST xong vào body -> raw -> chuyển định dạng JSON -> gõ body của POST dạng JSON vào là được.
+
+Ở mỗi tab có thể tạo ra các request khác nhau -> chỉ cần gõ url và send là được. Có thể thêm các params, header,..
+
+POSTMAN console -> clear -> gửi request thì console sẽ hiện ra thông tin từng request đầy đủ
+
+-> Viết automation test cho POSTMAN: vào mỗi request cần test -> chuyển sang tab tests -> viết code JS để test. Ở đây có thể dùng snippet có sẵn bên tay phải để gọi nhanh -> mở console và send request để hiện test
+
+Tests sẽ chạy sau khi nhận về response còn Pre-request Script chạy trước khi gửi request từ client -> có thể thêm code JS đó vào phần pre-request script hay tests của collection trong mục edit để nó chạy trước khi gửi mọi request trong collection. Đây là cách mà ta có thể gửi request xong lấy response về và dùng làm data để gửi request tiếp theo. Cx có thể viết test, pre-request script trong phần edit của folder để test trong phạm vi folder. 
+Ta có thể lấy responseBody và từ đó lấy các tham số được trả ra bên trong -> sau đó set vào environment variables của 1 request khác và gọi request đó là được. Mỗi variables có 2 giá trị là initial và currentValue và currentValue là cái mà nó dùng thì sau khi set thì currentValue được update đó.
+
+-> Tạo biến trong POSTMAN: Collection -> edit -> variable -> đặt tên biến và giá trị -> dùng với {{tên biến}} và save lại => biến này chỉ dùng được trong 1 collection đó chứ k dùng được trong các collection khác. 
+Muốn dùng ở mọi nơi phải khởi tạo global var: ấn vào con mắt -> add global -> save và dùng như bth
+
+Bài toán: nếu API của ta cần chạy trên 2 môi trường khác nhau là QA và UAT. Tester phải test trên 2 môi trường đó vẫn dùng các variables của POSTMAN như v nhưng chỉ có 1 vài thông số bị đổi thì POSTMAN làm điều đó nhanh nhất bằng cách tạo môi trường
+=> Ấn vào con mắt -> add environment -> đặt tên và tạo biến
+Ấn vào tab environment bên trái -> có thể quản lý duplicate và delete mọi environments và global variables.
+
+Với các test snippet nó liên quan đến status code hay time thì có thể check ở trong tab test result sau khi send request sẽ nhận được. Tương tự ta có thể test cái này trong collection và chạy nó với collection runner thì sẽ hiện ra thông tin test pass hay fail
+
+
+
+# NewMan
+NewMan là tool giúp chạy collection của Postman bằng cmd. VD: ta có POSTMAN tạo ra 1 collection để test cho dự án và gửi cho người khác nhưng họ k dùng postman thì họ có thể dùng newman(1 package của nodejs để chạy collection của postman thoải mái) giúp run collection via cli: npm install -g newman-> newman -v => chú ý install có -g mới thêm vào environment của terminal mới dùng lệnh newman được
+C1: dùng share collection via JSON Link -> newman run <JSON Link> và kết quả hiển thị ngay trên console. Cx có thể dùng Link này để người khác: tạo workspace -> import link này vào POSTMAN của họ để dùng => nên dùng
+C2: dùng export collection -> chọn nơi lưu là có 1 file json của collection này -> tương tự dùng newman run <link tới JSON file đó> là chạy được => k nên dùng
+
+

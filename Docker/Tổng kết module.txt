@@ -1,10 +1,347 @@
 Docker
+Mặc định ta dùng Linux container với wsl2. Máy win mà có nhân linux thì vẫn dùng được linux container của docker bth
+Trên docker, thực tế ta có thể cài được bất cứ 1 cái gì trên 1 container độc lập. Từ webserver, database, trình biên dịch hay thậm chí 1 hệ điều hành khác. Khi dùng linux container, các images ta tải về đều mặc định là chạy trên linux, VD cấu trúc thư mục là của linux. Ta chưa bao giờ thấy images window bao giờ cả.
+
+Với docker ta có thể tạo ra nhiều ứng dụng độc lập. Mỗi network trong docker giống như 1 mạng LAN ấy. VD Ta có thể tạo ra 3 mạng LAN rồi trên mỗi mạng có các máy chạy chạy độc lập. Máy A chạy mysql ở 1 cổng, máy B chạy php ở 1 cổng, mỗi container như dùng 1 máy tính độc lập có ip riêng và có các bộ cổng riêng luôn, tương tác với nhau thông qua port và ip address như bth.
 
 
 
 # Basic
--> Setup cho window
-Cài wsl2
+-> Setup docker wsl2 cho máy window
+Kích hoạt chế độ hyper-v trên máy tính: chạy powershell quyền admin ->  Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+Enable virtualization trong BIOS nếu chưa có
+Setup wsl2: https://xuanthulab.net/cai-dat-va-chay-docker-trong-wsl2-windows.html
 Cài docker desktop cho window => thực tế chỉ dùng commandline, còn docker desktop GUI ít dùng
 
+WSL2 là engine tương tự nhưng tốt hơn Hyper-V, cả 2 đều có sẵn ở win10. Để dùng wsl2, phải bật hyperv trước như trên.
+
+Docker có 2 bản window container và linux container. Window container bị giới hạn rất nhiều nên docker dùng trên linux mới chạy được:
+- Right click biểu tượng trên taskbar window -> switch to window container => dùng window container
+- Để dùng linux container, máy phải cài nhân kernel của linux. Ở trên win10 có thể dùng linux container thông qua wsl2. 
+
+Nếu dùng window container thì ở bất cứ đâu đều phải gõ đường dẫn tuyệt đối ra nếu k là sai
+
+--> Lỗi:
+Nếu start bị lỗi thiếu memory trong khi có đủ memory thì: vào settings -> Docker Engine -> chỉnh experimental là true và apply and restart.
+
+-> Dùng wsl2:
+Cài wsl2 + các lệnh wsl thg dùng: https://www.c-sharpcorner.com/article/how-to-install-windows-subsystem-for-linux-wsl2-on-windows-11/?fbclid=IwAR1MrgpTeerbc0QKR_ac6gj5LKRywlMLCH68Fm8zgmR82s-1VJ-gHpa3syY
+
+Mở wsl ở bất cứ folder nào: mở folder đó trong vsc -> wsl
+
+Cách reinstall để fix bug:
+Uninstall wsl2 với: https://pureinfotech.com/remove-linux-distro-wsl/
+Install lại bằng link trên là được
+
+Fix lỗi k chạy được tạo tk khi vào ubuntu sau khi reinstall: vào powershell administrator -> wsl -l -> wsl --unregister ubuntu -> vào lại ubuntu sẽ cho tạo tk mới bth
+
+-> Basic command powershell:
+docker -- version
+docker info
+docker => liệt kê lệnh con
+docker <lệnh> --help 
+
+
+
+# Dùng docker image
+Trong docker có nhiều loại image có vai trò đóng gói các phần mềm khác nhau. VD image đóng gói phần mềm PHP, image đóng gói hđh ubuntu,... Khi chạy các phần mềm được các image đóng gói sẽ tạo ra các container, mỗi phần mềm là 1 container. Các image chỉ đọc và k thể sửa đổi
+
+-> Command:
+docker images => liệt kê image đang có. Mặc định là ta có thể dùng mọi image trong kho chứa công cộng của docker hub. Có thể tìm để dùng các image có sẵn trong hub.docker.com
+docker search <tên image muốn tìm> => search đc trên terminal nên dùng các phiên bản official
+docker inspect <tên or id image or container> -> hiển thị chi tiết 1 image or container
+
+docker pull <tên image>:<tên phiên bản> => tên phiên bản xem trên hub.docker.com phần tag
+docker pull <tên image> => k có tag phiên bản or tag là :latest sẽ tự tải về phiên bản mới nhất
+
+docker image rm ubuntu:16.04 => xóa image đã có
+docker image rm <id của image muốn xóa chỉ cần vài chữ cái đầu> -> xóa image. Image tạo ra container mà container đang chạy thì k xóa image đó được mà phải thêm tham số -f
+
+docker run -it <tên images> => cách nhanh nhất để chạy 1 container
+docker run -it --name "<tên đặt cho container>" --rm -h <tên host container đó> ubuntu:<phiên bản> <lệnh> <tham số của lệnh> => thì lệnh và tham số là lệnh mà ta muốn khi image chạy và có 1 contaienr hoạt động thì nó sẽ thực hiện luôn lệnh nào thì thêm vào sau như v. Option -i là interact được với container, -t là tương tác bằng terminal. -rm là option giúp container tự bị remove ngay khi chạy xong lệnh run, khi dừng container sẽ tự bị xóa luôn. Ta thêm nó khi chỉ cần chạy container đó thực hiện lệnh đó đúng 1 lần. Option -h để set 1 cái hostname cho container, nó sẽ là hostname unique cho container trong network mà nó đang chạy
+docker run -it -v <path tới folder chứa file của host os muốn container tương tác với>:<path của nó tương ứng trên container> --name "<tên đặt cho container>" <id của image> -> VD: docker run -it -v /Users/Desktop/folder:/home/folder ff85 thì cái container được tạo ra từ image có id bắt đầu bằng ff85 sẽ có thư mục home/folder và bên trong có content y hệt content trên thư mục desktop/folder của máy host. Mọi sửa đổi của container trên folder thì folder của host cũng tự cập nhập ngay lập tức kể cả có xóa container về sau
+docker run -it --name "<tên đặt cho container2>" --volumns-from <tên container1> <tên image>:<tag> => chạy 1 image tạo container2 có cấu trúc thư mục của container1 và đồng bộ trực tiếp. Thao tác với file bên này thì bên kia cũng đổi theo
+docker start <id or tên của container> -> chạy 1 container đã exit trước đó(chưa xóa)
+docker ps -a => hiển thị containers đang chạy. Nếu thêm -a sẽ hiện mọi container kể cả container đã tắt
+docker restart <tên conainer>
+docker attach <id or tên container> -> vào lại terminal tương tác của container đang chạy
+docker exec <tên container đang chạy> <lệnh muốn chạy trên container đó> -> chạy lệnh trên container ở ngoài máy host(k cần vào terminal container đó)
+docker exec -it <tên container> bash => lệnh bash thực chất là mở terminal 1 tiến trình khác giống attach ở đây. Nếu từ cái này mà exit thì container vẫn hoạt động vì nó chạy 2 tiến trình bash cùng tên và mới exit 1 cái còn 1 cái chạy bởi hàm run vẫn đang chạy
+exit => dừng container và thoát, dừng cái tiến trình đó thôi nếu chạy bash thì container vẫn chạy ở tiến trình khác
+CTRL+P, CTRL+Q -> thoát terminal của container nhưng k tắt container
+docker stop <id or tên container> -> container đang chạy sẽ dừng lại
+docker rm <id or tên container> -> xóa 1 container đã exit
+docker rm -f <id or tên container> -> xóa 1 container dù đang chạy hay không
+
+docker commit <tên or id container> <tên image tự đặt>:<tên version tự đặt> -> Trong 1 container mà ta cài nhiều thứ xong mỗi lần xóa thì container đó mất or exit xong tắt máy thì container cx mất, ta có thể lưu nó thành image fix trong docker để lần sau chạy image đã lưu đó là có luôn container đó mà kp làm lại. Lệnh commit sẽ lưu container thành images và chạy docker images sẽ thấy images mới đó.
+docker save --output <link tới file>/<tên file tự đặt>.tar <id or tên image> -> biến image thành file riêng k lưu trong docker nx, có thể share cho người khác file
+docker load -i <link tới file image>.tar => load file thành image k có tên và tag
+docker tag <id của image> <tên tự đặt>:<tag tự đăt> => đặt tên và tag cho image
+docker image history <id or tên image> -> hiển thị quá trình hình thành images này từ image cơ sở
+
+docker volume ls -> liệt kê các ổ đĩa. Docker cho phép ta tạo ra các ổ đĩa ảo gắn vào các container để chúng thao tác chung với dữ liệu ổ đĩa đó. Ổ đĩa chỉ mất khi ta chủ động xóa ổ đĩa.
+docker volume create <tên ổ đĩa> -> tạo ổ đĩa
+docker volume inspect <tên ổ đĩa> -> xem thông tin ổ đĩa nào
+docker volume rm <tên ổ đĩa>
+docker run -it --name "<tên>" source=<tên ổ đĩa>,target=/home/disk2 ubuntu:latest => chạy image tạo ra container có thư mục /home/disk2 kết nối với ổ đĩa ảo có từ trc. Mọi thao tác trên container này sẽ ảnh hưởng tới ổ đĩa trên và dù xóa container thì ổ đĩa vẫn có dữ liệu mới nhất sửa đổi. /home/disk2 là thư mục của ổ đĩa
+docker volume create -opt device=/User/...<path trên máy host> -opt type=none -opt o=bind <tên ổ đĩa tự đặt> => tạo ổ đĩa ánh xạ đến ổ đĩa trên host. Với các ổ đĩa mà đã ánh xạ tới ổ trong host thì khi ánh xạ ổ đĩa đó tới container ta dùng -v chứ k dùng source target nx (thật ra chả cần ánh xạ gì, dùng mẹ -v thôi cho nhanh) => VD: docker run -it -v <tên ổ đĩa>:/<link trong container có ổ đĩa này> ubuntu:lastest => khi đó container đó sẽ ánh xạ tới cả ổ đĩa host và ổ đĩa ảo
+
+docker diff <tên or id container> -> từ thời điểm tạo ra cho đến h thì container này đã thay đổi cấu trúc file như thế nào vì dùng các container ta cứ cài nh thứ làm thư mục nó thay đổi
+docker logs --tail 10 <tên container> -> kiểm tra 10 dòng logs cuối của container nào
+docker logs -f <tên or id container> -> terminal sẽ chờ thao tác gì đó với container này thì logs sẽ bắt theo thời gian thực
+docker stats <container> <container> -> giám sát tài nguyên mà các container tiêu tốn thời gian thực. Nếu k liệt kê container nó sẽ tự giám sát tất cả
+
+docker network ls -> list ra các network trong docker. Docker có lệnh tạo và thao tác với hệ thống network giúp các container kết nối vào với nhau và kết nối ra bên ngoài. Nếu 1 container chạy bth kxđ network nó tự động vào default network đầu tiên trong list
+docker network inspect <tên network> -> xem thông tin network. Nhờ có các network mà bên trong các container linux chẳng hạn gọi được lệnh ping ra các trang web network bên ngoài. Lệnh này hiển thị các container trong network là gì và ip là bnh. 
+docker inspect <tên or id container> -> xem thông tin của container có cả network mà container này đang chạy trên
+docker run -it -e <tên biến môi trường>=<giá trị biến môi trường> --name "<tên>" --network <tên network> -p -8888:80 busybox -> chạy container với ánh xạ cổng 80 của nó thành cổng 8888 của host. Nếu k specific network sẽ dùng network đầu tiên.
+docker network create --driver bridge <tên network> -> tạo ra 1 mạng cầu trong hệ thống. Tạo ra nhiều network trong docker bên trong có nhiều container để cách ly container này với container mạng khác. VD ping sang container mạng khác sẽ k có gì
+docker network rm <tên network>
+docker network connect <tên network> <tên container> => kết nối network nào vào container nào đang chạy. 1 container có thể kết nối với 2 network 1 lúc được
+
+-> Tương tác network
+Trong hệ thông network docker, 2 container cùng thuộc 1 network có thể tương tác với nhau. Tương tác ra bên ngoài như nào thì tùy vào việc ánh xạ cổng như nào.
+VD vào terminal của container linux:
+- ping <id container khác ở trong network đó> => 2 container có thể trao đổi gói tin với nhau trong network đó. Ở đây thực chất 1 container chạy sẽ luôn có 1 cổng trong network. Lệnh ping của hệ điều hành linux (or phải cài apt-get update && apt-get install iputils-ping -y mới có) sẽ ping tới 1 ip address nào, thì docker khi dùng id or name sẽ tự hiểu là gọi ip address nên ở trên thực chất chỉ là ping tới 1 ip address của container khác trong mạng mà thôi.
+- ls /bin/ -la => trong container linux sẽ hiển thị mọi lệnh có trong container đó => inspect là thấy cái ipv4 liền
+
+VD: Chạy container máy chủ httpd riêng lắng nghe request gửi đến ở cổng 80. Ở trong 1 container linux khác: wget -O -<địa chỉ ip của http server của container trước> (web request tự gọi cổng 80) -> nó sẽ gửi trả về nội dung bên trong server. Có thể tạo file index.html bên trong server thì wget sẽ biên dịch và hiển thị file html đó trên powershell luôn => Tức container linux call api tới container web server httpd
+Tuy nhiên khi 1 container khởi tạo http server thì bên ngoài máy host k truy cập được server đó. Để làm được ta phải ánh xạ cổng 80 của container sang any cổng chưa dùng ở host. VD Khi đã ánh xạ cổng 80 sang 8888 của host chẳng hạn: thì mở browser với 127.0.0.1:8888 sẽ hiện ra index.html
+
+
+
+# Dùng ubuntu
+-> Dùng image ubuntu:
+Sau khi chạy container thì môi trường terminal chính là nơi ta có thể tương tác với container đó. VD nếu chạy image ubuntu thì ta có thể dùng các lệnh của ubuntu ở trên container đó
+cat /etc/*release -> hiển thị thông tin container hiện tại
+apt update -y -> 1 số lệnh trong ubuntu phải update mới có
+apt search <tên gói> -> search package để install
+apt install htop -> htop -> in ra các tiến trình đang chạy trong container. VD ta run xong lại exec bash thì có tổng 3 tiến trình đang chạy, 1 là run ban đầu, 2 là bash chạy trên 1 tiến trình mới kết nối với terminal của ta, 3 là lệnh htop đang dùng
+apt install iputils-ping -> ping google.com -> lệnh ping
+echo $<tên biến môi trường>
+=> Tương tự các package của container ta có thể tự do cài trên docker VD nếu dùng ubuntu có thể cài vim, nano,... Cứ lệnh nào của linux mà k có thì install vào. VD: apt install vim
+
+-> Dùng image busybox
+1 image nhỏ gọn nhưng chứa nhiều công cụ nền tảng linux.
+Chú ý localhost luôn là 127.0.0.1 kết nối với các network thông qua NIC(network interface card) và connect vào các network rồi tương tác với các container khác trong network có các ip khác cũng bắt đầu bằng 127.<a>.0.<b> -> nếu 2 container cùng thuộc 1 network sẽ có cùng giá trị a còn b tăng dần
+Khi 2 container thuộc cùng 1 network thì có thể gõ tên trực tiếp trong lệnh: VD trong container B3 ping đến B4 thay vì gõ ip của B4 ta chỉ cần: ping B4 là xong
+
+
+
+# Dùng image php
+# Dùng image mysql
+# Dùng image httpd
+=> Ref tới "# Thực hành docker network, mysql, php, httpd kết nối wordpress"
+
+Chú ý việc dùng container httpd và dùng container ubuntu rồi cài image httpd trên đó là khác nhau. Cách thứ 2 k có ý nghĩa vì bản thân docker đã mặc định dùng linux sẵn rồi nên có thể cài httpd container luôn.
+Chú ý có container có terminal để thao tác, có container thì không. VD httpd ta k bật được terminal mà chỉ chỉnh trong file config mà chạy thôi
+
+
+
+# Thực hành docker network, mysql, php, httpd kết nối wordpress
+Thực hành: Tạo network cầu tên www-net có 3 container chạy 3 dịch vụ mysql, php, httpd để tạo ra 1 web server hoàn chỉnh sau đó kết nối với wordpress trên hostOS
+=> ref tới folder "Docker Basic / Thực hành"
+
+-> Tạo mạng:
+docker network create --driver nat www-net 
+Trên linux ta dùng bridge, trên window ta dùng nat, ở đây giả sử window container ta dùng nat
+
+-> Dùng php image
+images php phiên bản 7.3-fpm: có fpm là FastCGI Process Manager có chức năng phiên dịch PHP khi chạy trang web cho webserver. Dịch vụ này lắng nghe và tạo ra nhiều tiến trình trên cổng 9000, bắt các file.php
+- docker pull php:7.3-fpm
+- Tạo thư mục /docker/www ánh xạ chia sẻ dữ liệu giữa các container và host, giữa các container với nhau
+- docker run -d --name c-php -h php -v C:/Users/Admin/Desktop/docker:/home/docker/ --network www-net php:7.3-fpm => tham số -d sẽ chạy container trên background mà k hiển thị ra terminal của container đó ngay
+- Vào trong thư mục docker và thêm vào index.html và test.php thì cái container php này có thể chạy được file php bằng: php <tên file php> -> php --version
+- Xong container php trong network chạy được file php. Nó luôn lắng nghe file php tới trên cổng 9000(có thể đổi cổng trên docker desktop). Và ta muốn nếu có file php cần biên dịch thì http server phải gửi nó về cổng 9000 này. Container này dùng cổng 9000 của network www-net hiện tại và bên ngoài host k cần dùng nên k cần ánh xạ cổng
+
+-> Dùng image httpd
+Dùng Apache httpd là máy chủ web http(GET, POST,..), nó tự động routing serve cấu trúc thư mục trong htdocs(khi dùng ngoài win bth)
+- docker pull httpd để tải bản latest
+- Ta k thể run nó luôn được mà cần phải chỉnh config cho nó. Như chạy php như nào và thao tác với các file nào thì file config đó nằm trong thư mục /usr/local/apache2/conf/httpd.conf -> ta cần lấy file này ra để chỉnh sửa -> ý tưởng là chạy container lệnh copy ra 1 thư mục mà ánh xạ tới thư mục docker trên host để lấy ra ngoài host
+(Lỗi: trong window container không dùng được lệnh cp với file mà chỉ dùng được với thư mục nên ta phải copy cả thư mục ra và chỉnh file conf bên trong thư mục. Còn phải thêm -r vào lệnh cp mới đc) => chỉ window container mới bị
+-> docker run --rm -v C:/Users/Admin/Desktop/docker/:/home/docker/ httpd cp -r /usr/local/apache2/conf /home/docker/conf => thực hiện 1 lệnh lấy thư mục đó ra host r xóa container luôn. Chú ý đường dẫn k có space, nếu window có thì phải lưu tạm vào đâu r copy ra
+-> Sửa đổi file httpd.conf để mỗi khi chạy file php thì nó tự gọi php-fpm: ta phải nạp các module, uncomment các module mod_proxy.so -> thêm vào cuối file handler rằng mỗi khi gặp file đuôi .php thì sẽ gọi đến proxy redirect đến container c-php cổng 9000 xử lý: AddHandler "proxy:fcgi://c-php:9000" .php -> thiết lập thư mục làm việc mặc định của nó chứa file index.html và php của ta -> chỉnh DocumentRoot và Directory
+-> Tạo container từ image httpd thực sự, để dùng file config ta tạo ra rất đơn giản, chỉ cần ánh xạ file config đó là được thì container sẽ theo host: docker run --network www-net --name c-httpd -h httpd -p 9999:80 -p 443:443 -v C:/Users/Admin/Desktop/docker/:/home/docker -v C:/Users/Admin/Desktop/docker/conf:/usr/local/apache2/conf httpd -> máy chủ apache chạy trên cổng 9999 ánh xạ vào cổng 80 của apache còn 443 https kệ nó cần dùng nhưng chưa dùng. Bh muốn gửi request đến apache từ host, ta gửi vào 9999 -> mở trình duyệt -> localhost:9999 -> Gọi localhost:9999/test.php -> vì thư mục mặc định ta set là docker/www nên ta lấy được file này luôn và nó sẽ gọi đến c-php để chạy file(nhờ c-php ms chạy được .php)
+=> Server đang chạy k được tắt đi
+
+-> Dùng image mysql
+Thông tin về configuration các images xem trong hub.docker.com VD mysql và httpd cần tới. Nhiều lúc để chạy container cần tới config mới được. Docker hay ở chỗ cái éo gì cx có và đơn giản nó lưu vào trong 1 thư mục nào đó và muốn lấy hay làm gì chỉ cần ánh xạ
+- docker pull mysql
+- mysql phiên bản mới nhất có thay đổi hệ thống login, ta muốn dùng phổ biến phiên bản login như cũ thì phải chỉnh sửa file config nhưng trong window ta copy cả thư mục: docker run --rm -v C:/Users/Admin/Desktop/docker/:/home/docker/ mysql cp -r /etc/mysql /home/docker/confmsql -> chỉnh my.cnf thêm vào cuối: default-authentication-plugin=mysql_native_password -> ta cũng sẽ tạo thêm thư mục db lưu cơ sở dữ liệu của mysql vào mà ta sẽ ánh xạ ra từ container.
+- image này chú ý phải set khi chạy container với port 3306, root là password MYSQL_ROOT_PASSWORD, database lưu trong /var/lib/mysql cần ánh xạ để lấy ra ngoài trong TH xóa container thì vẫn còn
+- docker run -e MYSQL_ROOT_PASSWORD=1234 -v C:/Users/Admin/Desktop/docker/confmsql:/etc/mysql -v C:/Users/Admin/Desktop/docker/db:/var/lib/mysql --network www-net --name c-mysql mysql
+=> Ở đây ta k ánh xạ cổng 3306 vì ta k có nhu cầu bên ngoài truy cập vào mysql mà chỉ cần các container trong cùng network truy cập vào database mà thôi thì cổng nó giữ nguyên là 3306 trong network. Nếu bên ngoài muốn thao tác các hàm SQL với database bên trong mới phải ánh xạ cổng
+=> Database server đang chay k đc tắt đi
+
+=> ref tới "NodeJS / Final / Dùng mysql2"
+
+Vào bash của c-mysql: 
+mysql -u root -p1234 -h <ip> => -p k có dâu cách sẽ điền pass luôn, có dấu cách thì điền k ai nhìn thấy, -u là user ở đây là root -> lệnh này sẽ connect từ container này vào sql server tương tác cmd, tham số -h là kết nối vào địa chỉ ip container nào thì đang ở trong container này r nên k cần nx
+Vào bên trong sql server rồi => dùng các hàm ngôn ngữ SQL thôi:
+show database;
+use <tên database>;
+use tables;
+create user "a" identified by "pass"; => nhớ password user này và ta sẽ dùng nó cài đặt wordpress
+create database test;
+show databases;
+select User from user;
+exit;
+
+-> Dùng wordpress ở bên ngoài máy host là window tương tác với các dịch vụ trong container
+Hiện tại đã có dịch cụ c-php lắng nghe file php trên cổng 9000 để biên dịch, còn dịch vụ c-httpd là 1 web server apache serve thư mục www ở cổng 9999. Nó được config khi người dùng vào cổng đó lấy file php thì redirect file php đó container c-php qua cổng 9000 biến dịch r mới gửi trả client.
+User -> www của httpd ở 9999 --redirect--> cphp ở 9000 biên dịch 
+Còn c-mysql lấy được database bất cứ lúc nào ở port 3306. 
+
+Ta sẽ cài wordpress: xóa test.php và index.html k cần nx -> tải wordpress trên trang chủ -> giải nén lấy source -> copy toàn bộ vào www -> mở web localhost:9999 lên sẽ hiện ra danh sách file vì apache ta chưa cấu hình file mặc định mà index.html k có nên nó hiển thị tất cả các file trong thư mục luôn. Mở index.php -> lúc này tương tác với web để setup wordpre, bao gồm cả setup database,...
+Để set up database, ta cần có sẵn database ta sẽ lấy là mysql container có từ trc. Nhập vào mọi thứ. database host là ip của database nhưng nên nhớ trong docker khi cùng 1 network thì chỉ cần nhập tên nó cx tự hiểu là ip nên là c-mysql là xong.
+Khi xuất hiện lỗi thì container sẽ báo lỗi xem bằng log. Ở đây có lỗi, để chạy được ta cần cài thêm các extension cho php vì nó không tương tác được với wordpress. Mở container php: 
+php -m -> liệt kê các extension được cài trong php. Ta cần cài thêm 2 cái nx
+docker-php-ext-install mysqli
+docker-php-ext-install pdo_mysql
+Ra ngoài host: docker restart c-php -> khởi động lại sau khi cài 2 extension
+Ta dùng tk vừa mới tạo testuser để truy cập vào database nhưng tk vừa tạo chưa có quyền truy cập vào database nào hết nên ta phải cấp quyền cho nó -> mở container của mysql vào tk root: GRANT ALL ON <tên database muốn cấp quyền(có thể tạo mới)>.* TO 'test_user'; -> nếu vào bằng tk của testuser sẽ thấy có thêm database mà ta đã cấp quyền. Ta phải GRANT ALL ON chứ GRANT SELECT ON sẽ chỉ cấp mỗi quyền select
+- Sau đó đăng nhập vào tk admin là xong trang web với wordpress hoàn chỉnh. apache k set thư mục mặc định nên ta phải chọn index.php để vào trang quản trị. Ta set mặc định điều này bằng cách thêm vào DirectoryIndex trong httpd.conf là index.php -> sau đó restart lại c-httpd(k đc thì xóa đi r chạy lại) => bh khi vào localhost:9999 là nó tự động render index.php mặc định của wordpress
+
+=> Như v 1 server đầy đủ phải có 1 database và 1 máy chủ web. Máy chủ web ở đây là http nếu dùng html thì k cần php làm gì nhưng wordpress chạy index.php nên cần images php ở đây. Đó là đk tối thiểu.
+
+=> Quy trình: httpd là máy chủ web là lớp ngoài cùng tương tác với front-end trực tiếp, nó chứa 1 tập hợp file và cung 1 cổng, khi ta gửi GET đến cổng đó thì nó gửi trả lại file front-end đã xác định; mysql là database của backend, nơi mà data được lưu => đó là đk tối thiểu để chạy 1 backend cho web app là 2 cục này phải cùng 1 mạng là xong. Lập trình backend ở đây là cái web server + database + tương tác giữa database và web server. Còn lập trình front-end ở đây chỉ là tạo ra các file như html, js để nhét vào trong web server mà tương tác thôi. Container php là có khả năng biên dịch file.php chạy ở 1 cổng xác định. File php đó thg là file mục lục index nơi forward ra các file html thực tế muốn dùng
+
+-> Chạy hệ quản trị SQL server 2017 của microsoft trên linux bằng docker
+docker pull mcr.microsoft.com/mssql/server:2017-latest
+Mặc định nó có user quản trị là 'sa' và cổng kết nối là 1433. Database lưu tại: /var/opt/mssql. Khi chạy container để thiết lập biến môi trường cho tk quản trị thì là SA_PASSWORD=..., ta cũng phải chấp nhận điều khoản người dùng cuối khi chạy container là ACCEPT_EULA=Y
+Công cụ kết nối vào sql server là sqlcmd(/opt/mssql-tools/bin/sqlcmd) giúp tương tác với server ngay tại container với cú pháp "sqlcmd -S host -U user -P password"
+Chạy nó cần rất nhiều bộ nhớ, k đủ sẽ lỗi 
+
+Tạo ổ đĩa ánh xạ vào sql server: docker volume create mssql -> docker run -it --name sqlserver -p 1433:1433 -v mssql:/var/opt/mssql -e SA_PASSWORD=1234 -e ACCEPT_EULA=Y <id image>
+Tương tác trong terminal sqlserver: cd /opt/mssql-tools/bin/ -> ./sqlcmd -S localhost -U SA -P 1234 (cái -S localhost thì k có cũng đc) -> thao tác: select name from master.dbo.sysdatabase -> go -> create database abc -> go
+
+V là có SQL Server thao tác bằng commandline nhưng chưa có GUI. SQL Management Studio chỉ có trên window, nhưng Azure Data Studio có trên cả 3 hđh nên có thể dùng thay thế SSMS -> vào azure -> ta có thể kết nối với database trong sql server trên docker vừa tạo -> nhập vào tên server localhost, đăng nhập vào -> connect -> tạo query,...
+
+
+
+# Dùng Dockerfile
+-> VD dùng dockerfile, dùng docker build để tạo image myimage:v1 từ image có sẵn centos, cài sẵn vài package htop, vim, httpd và thi hành nền httpd khi container chạy.
+
+Trước tiên ta thao tác trên commandline trước:
+- docker pull centos
+- docker run -it --name cent centos 
+- yum update là lệnh update để có thể cài các gói vào centos 
+- yum install httpd httpd-tools -y 
+- httpd -v để check có httpd chưa
+- yum install vim
+=> Dựa vào lệnh, ta có thể dựng Dockerfile tạo image xong thì run nó để chạy container từ image đó
+
+htop là lệnh nằm trong các gói package mở rộng mà ta phải cài gói trước: yum install epel-release -> yum update -y vì cài xong gói mở rộng phải update lại -> yum install htop -y -> htop
+
+--> Thêm task là copy thư mục test.html ở trong máy vào trong 1 thư mục ở trong container
+Window container: Thoát ra terminal của host. Trong window bị lỗi deamon phải exit container rồi dùng cp rồi lại start container lại mới được. Ở TH này window container vẫn cho copy file nhưng thư mục trên container phải tạo hết từ trước nếu không sẽ báo lỗi directory k tồn tại: 
+docker cp <link tới file(window phải dùng folder) test>.html <tên container>:<link trên container các thư mục phải có từ trước>
+VD: docker cp ./MyImages/test.html cent:/var/www/html/
+(Nếu docker cp ./MyImages/test.html cent:/var/www/html/ thì copy file test.html vào thư mục html. Còn docker cp ./MyImages/test.html cent:/var/www/html là sinh ra file html ở trong thư mục www có nội dung giống file test.html -> cần tránh nhâm điều này)
+
+Chú ý 1 container chạy httpd và 1 container hđh centos cài package httpd hơi khác nhau. 1 cái là container chạy máy chủ web biên dịch html js, còn 1 cái là cài 1 hệ điều hành rồi lại chạy 1 máy chủ web trên nó. Ở đây centos chạy httpd thì cổng 80 của cái centos đó chính là chạy httpd đó chứ kp cổng 80 của máy host.
+=> Khi dùng docker file, ta đang thao tác với 1 container OS và biến nó thành 1 image mới. Nó khác với việc chạy nhiều container 1 lúc (phải dùng docker compose). Trong thực tế có nhiều loại ứng dụng chuyên dùng để chạy các ứng dụng khác. VD ta cài php rồi cài mysql trên nó (php là TH đặc biệt cũng có myphpadmin quản lý mysql đi kèm)
+
+Để lưu thành image: exit dừng container -> docker commit cent myimage:v1 -> có thể xóa container cent k cần nx -> chạy container từ myimage: docker run --rm -p 9876:80 myimage:v1 httpd -D FOREGROUND  => thì -rm vì khi nào dừng là xóa container luôn, -D là để nó chạy nền, mở browser cổng 9876 là vào được httpd-> các thư mục ta copy nó sẽ tự tìm đến file đó và lấy nên ta mở /test.html sẽ thấy
+=> Vc ta xây dựng myimage thủ công thế này có thể nhét vào trong dockerfile r khi cần thì docker sẽ tự chạy file đó tạo ra image cho ta luôn: tạo Dockerfile -> tải extension Dockerfile về để có highlight cú pháp -> code Dockerfile -> docker build -t <tên image k được viết hoa>:<tag> -f Dockerfile <link tới thư mục docker file, nếu là thư mục hiện tại thì để dấu chấm là được> => thế là có image.
+Giả sử tạo lại image như bên trên thì ta chạy container nó tự có thư mục mặc định chứa test.html và chạy httpd sẵn r nên ta chỉ cần: docker run -p 6789:80 myimage:v1 => bật máy tính cổng 6789 ra để thấy file test.html => vì ở đây httpd chạy ở port 80 của centos, ta phải chạy port 80 của centos ra port 6789 của host os mới thấy được.
+Port 80 thực chất là mặc định, Vd ta gõ localhost/20194761 tức là mặc định localhost:80/20194761
+
+Docker build bị lỗi ở bước nào khi build lại sẽ tiếp ở bước đó, nó có cơ chế lưu các bước build lại để kp build từ đầu mất tg.
+
+=> Window bị lỗi với Dockerfille với mọi lệnh RUN. Cho đến h chưa ai fix đc, tốt nhất là dùng linux container
+=> Đây là cách xây dựng 1 nền tảng để chạy. VD ta có code server muốn build và run trên linux mà k có máy linux thì dùng docker tạo ra như này là có
+
+
+
+# Dùng dockercompose
+File docker compose có định dạng .yml lưu dữ liệu dạng key val (giống json ấy). Nó tuân thủ đúng từng dấu cách dòng. Dockerfile kêt hợp với docker build chỉ để tạo ra 1 images trong khi docker compose tạo hẳn 1 app có đầy đủ dịch vụ nhiều images cx đc.
+
+-> Thực hành: Dùng docker compose tạo ra 3 dịch vụ của ứng dụng là mysql, httpd, php. Đồng thời 3 dịch vụ tạo ra trong cùng 1 network và ổ đĩa để chia sẻ dữ liệu:
+Ta sẽ xây 1 ứng dụng có 3 dịch vụ:
+container php-product chạy từ image PHP:7.3-fpm trên cổng 9000 cài mysqli, pdo_mysql và thư mục làm việc là /home/sites/site1
+container c-httpd01 chạy từ container httpd của apache trên cổng 80 và 443, ta có sửa file config của nó gọi đến php-product khi dùng file.php và thư mục làm việc là /home/sites/site1
+container mysql-product chạy cổng 3304 và chỉnh file config dùng authentication kiểu cũ, có ánh xạ database, có password, và tạo ra user siteuser mk là sitepass, database riêng db_site để thao tác
+Ứng dụng có dùng chung 1 network nat có tên my-network và ổ đĩa có tên dir-site đồng bộ dữ liệu trên máy host là /dockercompose/source/
+Ứng dụng là webserver có 3 dịch vụ như v sẽ chạy được website bằng wordpress trên hệ thống này mặc định hiện ra index.html -> ở đây ta dùng joomla thay thế wordpress
+
+=> Cơ chế: tạo file docker-compose.yml bên trong có khởi tạo 3 dịch vụ là 3 container bên trên. Khác với Dockerfile chỉ để tạo 1 container 1 dịch vụ thì docker-compose tạo 1 phát bao nhiêu cũng được. Và sau cùng chạy file docker-compose bằng lệnh "docker-compose up" ở trong thư mục chứa file docker-compose.yml là xong
+
+Tạo docker file cho php vì nên chia ra mỗi service 1 dockerfile:
+  docker-php-ext-install mysqli pdo_mysql
+Trích xuất file httpd.conf của httpd ra và sửa là dùng container php-product khi gặp .php, sửa thư mục mặc định nx(đã biêt): 
+  /usr/local/apache2/conf/httpd.conf
+  AddHandler "proxy:fcgi://<tên container php fpm>:9000" .php
+Tương tự trích xuất my.cnf của mysql và chỉnh authentication -> tạo thư mục lưu database:
+  /etc/mysql/my.cnf
+  default-authentication-plugin=mysql_native_password
+  /var/lib/mysql
+Tạo docker-compose.yml -> cái version éo hiểu sao lỗi xóa đi thì ok
+docker-compose up -> tự chạy các lệnh trong file có tên docker-compose.yml -> phải ở cùng cấp thư mục chứa file đó -> mở cổng 9999 sẽ thấy dịch vụ -> tải mã nguồn joomla về -> giải nén và nhét vào source/sites1 -> mở web và cài đặt như wordpress thôi -> làm theo hướng dân của loomja là xong -> login tk admin
+
+-> Command docker-compose:
+docker-compose down -> xóa các thành phần chạy bằng docker-compose up
+docker-compose ps -> hiện container chạy bằng lệnh up (option -a)
+docker-compose ps --service -> hiện các service của docker-compose đng chạy
+docker-compose stop -> dừng nhưng k xóa
+docker-compose start -> chạy cái docker-compose đã stop
+docker-compose restart
+docker-compose images -> xem docker đang chạy được tạo ra từ những images nào
+docker-compose exec my-php bash -> tên container đang chạy bởi docker-compose và tên lệnh muốn chạy trên container đó
+docker-compose logs <tên các container chạy bằng docker-compose, nếu k có sẽ đọc logs ở mọi dịch vụ đang chạy>
+
+
+
+# Dùng haproxy images
+Dùng Haproxy làm server cân bằng tải cho docker => yêu cầu gửi tới Haproxy trước r nó chuyển hướng tới server thích hợp
+docker pull haproxy
+File cấu hình ở /etc/haproxy/haproxy.cfg -> tạo nó và ánh xạ vào container. 
+Ta sẽ tạo file kiểu có 2 khối front-end:
+- Yêu cầu gửi tới cổng 80 thì khối front-end http-in xử lý và gửi tới 2 server backend. Nếu testhaproxy1.com thì gửi khối 1 có 1 server yahoo.com xử lý. Nếu là testhaproxy2.com thì gửi tới khối 2 có 3 server google.com, bing.com, wikipedia.org xử lý
+- Yêu cầu gửi tới cổng 443 thì khối front-end https-in xử lý và testhaproxy1/2 đều gửi tới khối 3 có 1 server xử lý 
+
+=> chạy container haproxy sử dụng file config: docker run -v C:/Users/Admin/Desktop/haproxy:/usr/local/etc/haproxy -p 8080:80 -p 443:443 haproxy:latest
+(=> Window container éo chạy được. lỗi file config k tồn tại, lùi phiên bản cũ chắc đc)
+
+=> Sau khi chạy nếu như ta truy cập vào cổng 8080 or 443 với host là testhaproxy1/2.com thì haproxy sẽ bắt và thực hiện chuyển hướng. Tuy nhiên host của ta đang mặc định là localhost. Ta có thể đổi host bằng cách vào file host: ở win thì C:/Windows/System32/Drivers/etc/hosts còn MAC và Linux ở /etc/hosts -> ta vào đó và thêm 2 tên miền ảo trỏ tới cái host của ta là:
+127.0.0.1 testhaproxy1.com
+127.0.0.1 testhaproxy2.com
+=> bh ta vào testhaproxy1.com:8080 là haproxy thấy có request cổng 80 và tên host trùng testhaproxy1 sẽ gửi tới backend tương ứng và do ta chọn roundrobin nên mỗi lần refresh sẽ quay vòng các trang yahoo, google, bing
+
+
+
+# Docker Machine
+Docker Machine tạo ra máy ảo và trên máy ảo lại cài docker => giúp tạo ra nhiều hệ thống docker khác nhau trên máy ảo độc lập. Sau kết nối với Docker Swarm thì chúng sẽ kết nối với nhau tạo 1 dịch vụ hoàn chỉnh. 
+Ở phiên bản mới phải tự cài thêm docker-machine ở window or ở linux: https://github.com/docker/machine/releases -> paste vào git bash -> dùng gitbash luôn k dùng powershell nx (Để paste vào gitbash ta kéo rê)
+
+docker-machine ls
+docker-machine create -drive virtualbox vps1 => tạo máy ảo bằng virtualbox, trên window thay virtualbox bằng hyperv. Tham số cuối là tên máy ảo, bản chất cũng chỉ là máy ảo tạo ra từ công cụ khác. Nếu dùng hyperv window thì phải chạy quyền admin (k dùng window)
+
+URL: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html
+
+
+
+# Other 
+-> Dừng ở Docker Machine
+Học tiếp tại: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html
+
+-> Tổng kết basic:
+Cài đặt với hyper v, khác với VM
+Các lệnh in thông tin như docker --version
+image
+container
+Tương tác với terminal của window, linux, centos
+Lưu lại image mới or ra file để chia sẻ
+volume
+Ánh xạ thư mục, ổ đĩa, copy file trong container, hostos
+Chạy máy chủ web trong docker và ánh xạ cổng dùng trong hostOS
+network
+Tạo 1 máy chủ web có database hoàn chỉnh với wordpress: php, mysql, httpd
+docker-compose.yml
+Dùng mssql
+Dùng haproxy
+Docker Machine
+
+-> Dùng rabbitMQ 
+=> ref tới "JSAdvance"
 
