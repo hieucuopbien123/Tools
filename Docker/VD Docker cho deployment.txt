@@ -1,0 +1,227 @@
+VD deploy 1 server NodeJS Express sử dụng PM2 quản lý 2 instance và Nginx làm Reserve Proxy và đóng gói bằng Docker
+
+-> Tại sao phải dùng cả PM2 và nginx tools? Vì chúng có các tính năng lợi ích khác nhau
+
+--> PM2 giúp quản lý nhiều tiến trình của ứng dụng chạy song song trên cùng 1 cổng, và nó cũng load balancer tự động cho các instance đó luôn. Giúp tăng lưu lượng truy cập có thể xử lý, log và monitoring và điều quan trọng nhất là tự tái khởi động server nếu bị lỗi. 
+
+PM2 chạy nhiều instance của ứng dụng trên cùng 1 port mà tăng hiệu suất được vì nó sử dụng 1 tính năng gọi là "cluster mode". 
+Khi 1 ứng dụng chạy trong chế độ cluster, nó tạo 1 tiến trình master ở 1 port và tiến trình này tạo ra nhiều tiến trình worker, mỗi worker là 1 instance của ứng dụng. Khi có request, master sẽ phân bố đến worker giúp tăng khả năng xử lý đồng thời.
+Ko dùng cluster mode cho ứng dụng duy trì trạng thái biến toàn cụng hay kết nối đến cơ sở dữ liệu vì mỗi instance là độc lập
+
+--> Nginx dùng làm reverse proxy đến nhiều server backend độc lập, cấu hình load balancer giữa các server, bảo mật SSL/TLS, hiệu suất xử lý cao
+
+Nginx cấu hình load balancer giữa các server độc lập. 
+VD1: máy local chạy 2 instance PM2 tại cùng 1 port thì nginx chả có vai trò gì ở đây
+VD2: máy local chạy 2 instance server tại 2 port trên cùng 1 máy thì là 2 ứng dụng độc lập, nginx có thể phân phối tải cho ứng dụng nào xử lý. Nhưng điều này k đem lại lợi ích gì vì khả năng xử lý k tăng
+VD3: 2 máy chủ vật lý độc lập chạy server ở 2 ip khác nhau, lúc này là mở rộng chiều ngang thì nginx có thể load balancing giữa các máy ok
+
+
+-> Quy trình cơ bản chưa dùng docker:
+Tạo 1 ứng dụng server express -> Chạy ứng dụng đó bằng pm2 command -> Chạy nginx cấu hình cho cổng đang listen của server express 
+
+
+-> Quy trình có thêm Docker
+- Tạo 1 ứng dụng express:
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
+
+- Cài đặt và cấu hình pm2 trong file ecosystem.config.js:
+module.exports = {
+  apps: [{
+    name: 'my-app',
+    script: 'app.js',
+    instances: 2,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'development'
+    },
+    env_production: {
+      NODE_ENV: 'production'
+    }
+  }]
+};
+
+- Tạo Dockerfile cho ứng dụng NodeJS:
+FROM node:14
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD [ "pm2-runtime", "start", "ecosystem.config.js" ]
+
+- Tạo Dockerfile cho nginx:
+# Sử dụng image nginx từ Docker Hub
+FROM nginx
+# Sao chép file cấu hình nginx vào container
+COPY nginx.conf /etc/nginx/nginx.conf
+
+- Viết cấu hình nginx gắn với server express đang listen cổng 3000:
+events { worker_connections 1024; }
+http {
+  upstream myapp {
+    server app:3000;
+  }
+  server {
+    listen 80;
+    location / {
+      proxy_pass http://localhost:3000;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection 'upgrade';
+      proxy_set_header Host $host;
+      proxy_cache_bypass $http_upgrade;
+    }
+  }
+}
+
+- Tạo file docker compose gom các Dockerfile lại:
+version: '1'
+services:
+  app:
+    build: .
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - app-network
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
+
+Xây dựng docker container và chạy nó:
+docker-compose up --build
+
+=> Chạy nginx và server express ở 2 container độc lập v mới chuẩn
+
+- Nếu ta sửa code server, để deploy được code mới:
+docker-compose build => build lại image docker 
+
+docker-compose up -d => khởi động lại docker container
+Cờ -d trong lệnh trên có nghĩa là "detach", cho phép Docker container chạy ở chế độ nền.
+
+=> Ở đây ta đóng gói tất cả thành container đơn lẻ cô lập ứng dụng với môi trường phụ thuộc bên ngoài. 
+Giả sử ta muốn chuyển toàn bộ server sang 1 máy chủ mới (và bỏ máy chủ cũ) thì máy chủ mới chỉ cần cài đặt docker và chạy lệnh build hoặc pull image về là sẽ có 1 phiên bản mô phỏng đầy đủ hoàn toàn. Máy chủ mới k cần cài nodejs hay nginx sẵn làm gì. Giúp giảm thiểu sự phục thuộc vào môi trường chạy máy chủ, đảm bảo tính đồng nhất của ứng dụng. 
+
+
+-> Như v server nginx và nodejs sẽ nằm trên cùng 1 máy. Giả sử ta muốn mở rộng giúp server nodejs chịu tải tốt hơn bằng cách dùng từ 1 thành 2 máy chủ vật lý thì:
+Cài đặt docker trên máy chủ mới
+Deploy nodejs lên máy chủ mới bằng cách sao chép mã nguồn và Dockerfile và docker-compose.yml rồi chạy được luôn
+
+Ở máy chủ đầu tiên, ta cấu hình lại nginx để nó chuyển hướng 1 phần traffic nhận được sang máy chủ mới:
+http {
+  upstream myapp {
+    server app:3000;
+    server new-server-ip:3000;
+  }
+  server {
+    listen 80;
+    location / {
+      proxy_pass http://myapp;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection 'upgrade';
+      proxy_set_header Host $host;
+      proxy_cache_bypass $http_upgrade;
+    }
+  }
+}
+Rồi khởi động lại nginx là được
+
+Mọi traffic đến máy chủ đầu tiên rồi 1 phần được đưa sang máy chủ thứ 2. Máy chủ thứ 2 xử lý và trả lại trực tiếp user chứ response k về lại máy chủ 1 nữa nhé.
+
+
+-> Ở mô hình hiện tại, nginx và server nodejs đầu tiên nằm trên cùng 1 máy vật lý và nhận request. 1 phần request được nginx gửi cho server nodejs ở máy vật lý thứ 2. 
+Trong các hệ thống lớn, thường thì nginx hay bất cứ load balancer nào khác sẽ được đặt ở 1 máy chủ mạnh riêng biệt. Các máy chủ chính cũng tách ra và chạy trên các máy chủ vật lý riêng, bên trong chạy nhiều instance ảo tối ưu hóa khả năng của CPU. 
+
+Việc tách biệt này giúp tối ưu hóa hiệu suất vì nếu 1 máy chủ chính hỏng sẽ k ảnh hưởng tới máy chủ nginx và các máy chủ khác. 
+
+
+-> Nhưng vẫn bị nút thắt cổ chai vì mọi request đều đến máy chủ nginx đầu tiên trước, điều này xảy ra khá thường xuyên vì khi tự implement load balancer, luôn phải có 1 điểm tiếp nhận request duy nhất rồi phân bố ra cho các server khác. Chính điểm tiếp nhận duy nhất đó có thể phải xử lý quá nhiều request trong các hệ thống nhiều người dùng.
+
+Để giải quyết, ta có thể cấu hình load balancing tại cấp độ DNS:
+- Giả sử ta có nhiều máy chủ ở các IP riêng. 
+- Ta cấu hình DNS sử dụng load balancing, điều này phụ thuộc vào nhà cung cấp DNS. VD 1 trang web có 2 IP khác nhau:
+example.com.  A  192.0.2.1
+example.com.  A  192.0.2.2
+
+=> Việc cấu hình cấp độ DNS k dùng load balancer tập trung nữa mà ngay từ khi frontend gửi request, browser lấy ip của server qua DNS thì đã tự có load balancing phân bổ tới server hợp lý rồi.
+
+Load balancing ở cấp độ DNS có hạn chế lớn nhất là việc k thể tự xử lý khi máy chủ gặp sự cố, nó sẽ tiếp tục gửi request đến đó trừ khi ta thủ công cập nhật file cấu hình. Có nhiều pp khác cũng giúp xử lý điều này, như việc ta cấu hình để user ở các vùng miền khác nhau sẽ tự gọi vào các server ở gần họ. 
+
+
+-> Có 2 kiểu hosting phổ biến:
+- Dùng PaaS cung sẵn 1 môi trường, ta upload code và cài đặt các thú cần thiết. Khi chạy thì url tự động public ra mạng internet. Như kiểu ta code trên 1 máy remote ấy. Có nền tảng cho ta mở code editor trực tiếp, có nền tảng cho dùng FTP upload file rồi chạy command
+
+- Self-hosting là tự triển khai ở máy local và mua 1 tên miền để cấu hình nó trỏ tới IP public của server, sau khi đã cấu hình router cho ip server public ra ngoài.
+
+VD ta có thể cấu hình nginx với tên miền:
+server {
+  listen 80;
+  server_name your_domain.com; # Thay 'your_domain.com' bằng tên miền hoặc địa chỉ IP của server
+  location / {
+    proxy_pass http://127.0.0.1:3000;  # Điều hướng yêu cầu đến ứng dụng Express chạy trên cổng 3000
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+  }
+}
+=> Người dùng vào your_domain.com sẽ chạy vào http://127.0.0.1:3000
+
+
+-> PM2 klq gì tới quá trình hosting. Nó giúp ở cấp độ gần hơn với app. 
+VD dùng PM2 để chia môi trường production và development với biến NODE_ENV:
+
+// File: ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'my-app',
+      script: 'app.js',
+      watch: true,
+      env_production: {
+        NODE_ENV: 'production'
+      },
+      env_development: {
+        NODE_ENV: 'development'
+      }
+    }
+  ]
+};
+
+Chạy production: pm2 start ecosystem.config.js --env production
+Chạy development: pm2 start ecosystem.config.js --env development
+
+Config server thông qua biến môi trường:
+const express = require('express');
+const app = express();
+const port = 3000;
+if (process.env.NODE_ENV === 'production') {
+  // Cài đặt cho môi trường production
+} else if (process.env.NODE_ENV === 'development') {
+  // Cài đặt cho môi trường development
+}
+app.get('/', (req, res) => {
+  res.send('Hello from Node.js app!');
+});
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+
+

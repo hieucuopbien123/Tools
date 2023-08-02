@@ -1,0 +1,15 @@
+K8s
+
+
+# Basic
+Kubernetes(K8s hay kube) là container platform mã nguồn mở giúp tự động deploy, quản lý và scaling ứng dụng container.
+Nó lo nhiều chức năng khác so với docker. VD ta đã deploy 3 server khác nhau lên docker, xong muốn scale up lên 40 server, và cũng phải quản lý cả 40 server, restart nếu nó die, nếu chỉ dùng docker thì phải quản lý thủ công.
+
+Master[etcd, controller, manager, scheduler <-> kube apiserver] <-> Worker1[Container] | <- Load balancer <- User
+                                                                <-> Worker2[Container] | 
+
+Kubenetes cluster gồm 1 master và nhiều worker node
+Worker node: Worker[Pods[Container], kubelet, kube proxy]
+Container có thể là docker or các nền tảng khác để chạy container; Kubelet giao tiếp với API server và quản lý container; kube-proxy quản lý traffic các ứng dụng chạy trong worker node đó
+
+

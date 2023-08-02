@@ -1,4 +1,6 @@
 Apache 
+Apache hỗ trợ các giao thức HTTP và HTTPS và có thể chạy trên nhiều hệ điều hành khác nhau, bao gồm Windows, Linux và macOS. Nó cũng hỗ trợ các ứng dụng web PHP, Perl và Python.
+Trong khi đó, httpd là một phần của Apache HTTP Server, là một tên viết tắt của "HTTP daemon". Nó là một tiến trình chạy ngầm trên máy chủ web của bạn và xử lý các yêu cầu HTTP được gửi đến máy chủ. httpd là một phần quan trọng của Apache HTTP Server và được cài đặt cùng với nó.
 
 
 

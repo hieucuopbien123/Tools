@@ -107,7 +107,7 @@ Bên cạnh đó, họ vẫn phải chọn lọc thủ công trong 1 số TH. VD
 Đơn giản nhất là ghi vào file các kiểu log Error, Info hay Debug như kiểu system_log.txt nhưng làm v sẽ khó tìm lỗi, khó thống kê tần suất lỗi vì phải đọc file thủ công. 
 Nếu lưu log vào DB thì k ổn vì số lượng log mà lớn sẽ rất lâu để thống kê truy vấn, ảnh hưởng tới DB chính. 
 Họ xây dựng 1 hệ thống log riêng như ELK Stack:
-Log ---> logstash xử lý data ---> elasticsearch lưu data ---> kibana visualize data
+Log ---> logstash xử lý data ---> elasticsearch lưu data, phân tích data, giúp tìm kiếm nhanh ---> kibana visualize data
 => ELK Stack có tốc độ truy cập nhanh, biểu diễn data trực quan, tách rời k ảnh hưởng tới performance hệ thống chính. 
 Ta cũng có thể log hành vi của người dùng và thống kê đưa ra tính năng phù hợp, VD có thể dùng Google Analytic.
 

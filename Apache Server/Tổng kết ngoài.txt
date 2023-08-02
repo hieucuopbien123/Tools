@@ -44,3 +44,4 @@ Người dùng tương tác với nó đơn giản bằng cách gửi 1 HTTP req
 
 Cả database và web server đều phải xử lý vấn đề quan trọng nhất là xử lý nhiều request đến đồng thời từ phía người dùng. Nếu 1 người gửi quá nhiều request đến IP của server mà đầu vào nhỏ, đầu ra lớn thì có thể gây ra tấn công DDOS. Điều này thường có thể ngăn chặn bằng việc xử lý thêm nếu 1 IP gửi quá nhiều request thì chặn
 
+

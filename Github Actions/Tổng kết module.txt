@@ -1,0 +1,63 @@
+Github Actions
+Tool CI/CD rất mạnh của DevOps. Ta có thể viết code cho nó tự động hóa mọi thứ. VD push code lên git lên là tự động build và deploy luôn
+Có nhiều công cụ hỗ trợ sẵn github actions như vercel, nó hỗ trợ quá nhiều đến nỗi ta chỉ cần chọn mà k cần code flow tự động hóa. Với các ứng dụng lớn, yêu cầu phải code github actions custom cho từng tác vụ
+
+=> ref tới "Other / CICD"
+
+
+
+# Basic
+-> Actions
+Ta có thể bắt mọi event tương tác với github và làm bất cứ điều gì thông qua workflows. Workflows có sẵn được cộng đồng tạo có thể dùng, hoạt động với tất cả mọi ngôn ngữ và nền tảng.
+
+Events ---trigger---> Workflows ---Use---> Actions
+
+Ta có thể tự tạo actions và cho lên marketplace.
+Có thể viết actions bằng bất cứ ngôn ngữ nào miễn có thể compiled ra JS, tối thiểu phải có 2 file là index.js và action.yml config cho chạy index.js
+
+K nên tạo 1 action làm quá nhiều thứ vì sẽ rất khó debug lỗi cũng như khi thêm bớt các step tính năng mới, ta sẽ phải viết lại actions. 
+
+-> Workflows
+Mọi thứ luôn bắt đầu bằng event được xác định ở đầu file yml. Vd: push, pull_request, public, schedule (tự động chạy sau 1 khoảng tg), workflow_dispatch (trigger 1 actions thủ công, có thể biến thành api để mỗi khi call api đó là actions được thực hiện),...
+Workflow file yml phải để trong folder .github/workflows
+
+Có thể dùng docker sẽ chỉ chạy được trên linux vm của github actions. Đó là dùng container actions
+Có thể dùng secret or biến global trong phạm vi repo hay organization 1 nhóm các projects đều được.
+
+--> Matrix build giúp viết code 1 lần mà chạy build nhiều lần chạy trên các nền tảng và version khác nhau theo tham số truyền vào. 
+
+--> Vd: 
+name: Node CI
+on: [push]  # Bắt event push
+
+jobs: 
+  build: 
+    runs-on: ${{ matrix.os }}  # Buộc có runs-on để biết chạy trên nền tảng nào
+    strategy:
+      matrix:  # VD 1 job tự động build lại 9 lần mỗi khi push code (3 os, 3 version nodejs)
+        node-version: [8.x, 10.x, 12.x]
+        os: [macos-latest, window-latest, ubuntu-18.04]
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.JS ${{ matrix.node-version }}
+      uses: actions/setup-node@v1  # Dùng actions có sẵn, actions này giúp setup ứng dụng nodejs
+      with: 
+        node-version: ${{ matrix.node-version }}
+
+    - name: npm install, build and test
+      run: |  # Chạy shell-script
+        npm ci
+        npm run build --if-present
+        npm test
+      env: 
+        CI: true
+
+=> ref tới actions public của người khác thông qua: <user>/<name of repo>@v<version>
+VD: actions/setup-node@v1   
+
+
+
+# Other
+
+

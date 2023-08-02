@@ -14,7 +14,7 @@ RUN mkdir mkdir -p var/www
 RUN mkdir -p var/www/html
 
 # WORKDIR là set thư mục làm việc mặc định container
-# Ta còn muốn nó chạy và lắng nghe trên cổng 80
+# Ta còn muốn nó chạy và lắng nghe trên cổng 80 để bên ngoài gọi vào
 WORKDIR /var/www/html
 EXPOSE 80
 
@@ -25,5 +25,7 @@ EXPOSE 80
 # Thêm tham số cho ENTRYPOINT thì dùng CMD ngay dưới
 ENTRYPOINT [ "httpd" ]
 CMD [ "-D", "FOREGROUND" ]
+
+# Entrypoint như kiểu điểm bắt đầu để chạy câu lệnh ý. VD: ENTRYPOINT ["npm"] và CMD ["start"] tức chạy npm start
 
 # Lệnh commit biến nó thành 1 image ta không cần viết mà dùng docker bulid là có

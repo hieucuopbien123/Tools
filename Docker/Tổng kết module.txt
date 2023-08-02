@@ -321,6 +321,10 @@ URL: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html
 
 
 
+# VD Docker cho deployment
+
+
+
 # Other 
 -> Dừng ở Docker Machine
 Học tiếp tại: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html

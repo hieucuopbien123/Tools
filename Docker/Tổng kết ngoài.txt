@@ -1,5 +1,6 @@
 -> Docker là nền tảng cho phép build, ship, run ứng dụng nhanh chóng trên nhiều nền tảng, mã nguồn mở. Có 2 phiên bản CE cho nhóm nhỏ và EE cho doanh nghiệp. 
 Docker giúp build và run ứng dụng trên 1 môi trường cách ly là các container ảo hóa. Tốc độ nhanh và container rất nhẹ giúp giảm delay giữa code và production. Setup môi trường tránh xung đột phiên bản cho app 
+VD: ta có server muốn chạy trên linux mà chỉ có máy window thì dùng docker gói tất cả vào 1 cục linux và chạy ở máy nào cũng ok
 
 Phần cứng -> HostOS -> Docker running có nhiều container -> các ứng dụng trên Container(App, library)
 
@@ -18,6 +19,7 @@ Dù máy dùng bios mode UEFI hay legacy thì đều phải vào setup bios củ
 Dùng docker trên window sida vl. Dùng docker trên linux mà với hyperV thì k ổn, cách tốt nhất là dùng docker với WSL2. 
 Full cài docker - wsl2: https://xuanthulab.net/cai-dat-va-chay-docker-trong-wsl2-windows.html
 
-
+-> Mở terminal ở bất cứ thư mục nào và gõ wsl sẽ mở wsl ở thư mục đó
+Trong FileExplorer cũng truy cập được vào cấu trúc thư mục của linux
 
 
