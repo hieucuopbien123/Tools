@@ -1,6 +1,6 @@
 # # Dùng dockercompose / Thực hành
 
-# verion: "3"
+verion: "3"
 
 # Network
 networks:
@@ -23,6 +23,7 @@ services:
       dockerfile: Dockerfile
       context: ./php # Là nơi lưu. dockercompose tạo được nhiều container. Ta có thể viết trước Dockerfile cho từng container khi có nhiều dòng lệnh bên trong cần chạy như này.
     hostname: php
+    # Container luôn khởi động lại khi bị out
     restart: always
     networks:
       - my-network

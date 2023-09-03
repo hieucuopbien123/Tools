@@ -4,6 +4,9 @@ Trên docker, thực tế ta có thể cài được bất cứ 1 cái gì trên
 
 Với docker ta có thể tạo ra nhiều ứng dụng độc lập. Mỗi network trong docker giống như 1 mạng LAN ấy. VD Ta có thể tạo ra 3 mạng LAN rồi trên mỗi mạng có các máy chạy chạy độc lập. Máy A chạy mysql ở 1 cổng, máy B chạy php ở 1 cổng, mỗi container như dùng 1 máy tính độc lập có ip riêng và có các bộ cổng riêng luôn, tương tác với nhau thông qua port và ip address như bth.
 
+Dev[Docker pull, docker run...] -> Docker[Docker deamon, image <-- container] <-> Docker registry
+Docker hub là 1 ví dụ của docker registry
+
 
 
 # Basic
@@ -322,12 +325,15 @@ URL: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html
 
 
 # VD Docker cho deployment
+# Thực hành docker hub
 
 
 
 # Other 
 -> Dừng ở Docker Machine
 Học tiếp tại: https://xuanthulab.net/tao-va-quan-ly-cac-may-docker-machine.html
+
+Ngoài ra còn có DockerSwarm thay thế K8s
 
 -> Tổng kết basic:
 Cài đặt với hyper v, khác với VM

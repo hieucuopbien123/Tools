@@ -1,0 +1,11 @@
+-> K8s phát triển bởi Google, mã nguồn mở. K8s hoạt động với nhiều ứng dụng container hóa, ở đây ta chỉ xét Docker.
+
+K8s giúp tự động deploy, quản lý và scaling ứng dụng container.
+Nó lo nhiều chức năng khác so với docker. VD ta đã deploy 3 server khác nhau lên docker, xong muốn scale up lên 40 server, và cũng phải quản lý cả 40 server, restart nếu nó die, nếu chỉ dùng docker thì phải quản lý thủ công. Nhờ K8s mà mọi thứ ez hơn
+
+Mục tiêu chính của Kubernetes là giải quyết việc triển khai và quản lý các ứng dụng phân tán trên một cụm máy chủ. Nó cung cấp một môi trường linh hoạt và có khả năng mở rộng để quản lý hàng ngàn, thậm chí hàng triệu các container chạy trên nhiều máy chủ.
+Với việc tạo điều kiện cho quản lý ứng dụng phân tán hiệu quả, Kubernetes đã trở thành một công nghệ quan trọng trong việc xây dựng và triển khai các ứng dụng cloud-native và microservices
+=> Docker là tạo 1 container thì K8s giúp quản lý các container ở nhiều máy chủ cơ. Có Docker Swarm là công cụ tương tự K8s
+
+-> Docker Swarm phù hợp với dự án nhỏ, ít container, giao diện dễ dùng hơn và triển khai nhanh, phù hợp với yêu cầu mở rộng đơn giản.
+K8s phù hợp với dự án quy mô lớn, mở rộng linh hoạt, khả năng tự động cân bằng tải và quản lý hàng nghìn container, độ phức tạp cao hơn, yêu cầu kiến thức kỹ thuật chuyên sâu.

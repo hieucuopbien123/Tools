@@ -1,0 +1,60 @@
+Tạo 1 dự án docker nestjs và push lên docker hub, sau đó nhiều người vào code dự án trực tiếp trên container ảo docker mà k lo môi trường:
+
+Tức mô hình thông thường khi nhiều người làm cùng 1 dự án thì họ pull code từ github về và chạy trên máy local rồi push lên git đó. Ta k cần biết các dev dùng hệ điều hành gì, khi push code lên git chẳng hạn và thông qua Docker + Github Actions, runner sẽ chạy ở 1 hđh cụ thể (thường là linux) để deploy dự án. 
+Tuy nhiên nếu các dev dùng hđh khác nhau hoặc gặp vấn đề về cấu hình phức tạp sẽ rất khó khăn để code dự án. 1 giải pháp khác cho nó là dùng VM. Mỗi người sẽ connect vào máy ảo thông qua SSH key, các máy ảo trên đám mây chạy hđh đồng bộ nhau và dev điều khiển code dự án trực tiếp trên máy ảo đó. K cần lo vấn đề config hay hđh, mà tốc độ VPN hay connect cũng nhanh.
+
+Docker cũng có 1 giải pháp tương tự như bên dưới => thực tế ta thấy chạy bằng máy ảo cũng có nhiều bất tiện với các dự án mà có nhiều kiểu chạy phức tạp mà dev cần tùy chỉnh
+
+Các bước:
+-> Tạo image như bth với dockerfile và dự án nestjs
+
+-> Push lên dockerhub:
+Phải đăng nhập docker ở máy local và đăng nhập docker hub online
+Vào: https://hub.docker.com/settings/security => tạo accesstoken mới và cắm vào terminal
+docker tag <tên image> <tên user trên dockerhub>/<tên image>
+docker push <tên user trên dockerhub>/<tên image>
+
+-> Bây giờ ai muốn dùng chỉ cần pull về rồi chạy là xong. Đây cũng là cách chạy ở đa số các nền tảng khi hỗ trợ deploy bằng docker. Vd github actions khi chạy docker file nó cũng làm như này. 
+
+docker run --name testhieu -p 3000:3000 -d hieucuopbien123/testhieu:latest
+docker exec -it 22d801b5bf39 /bin/sh
+=> Khi đó dev đang có 1 container chạy code dự án. Nó kiểu: 
+Máy host -- Máy ảo docker ubuntu[chứa code dự án và chạy code dự án]
+
+Đó là cách chạy nhưng ta chưa thể đụng vào code dự án mà chỉnh sửa các thứ từ máy host. Do đó ta phải chạy câu lệnh cp để copy code dự án chính vào máy local của ta
+Nên nhớ là containerization là 2 máy dùng chung kernel và bộ nhớ chứ k chia ra như virtualization, đồng nghĩa các thư mục của máy window đều có thể được truy xuất từ máy ảo ubuntu bằng path nào đó, cụ thể là từ '/nmt'
+VD C:\Users\Ryan.Nguyen\Desktop\test truy xuất được từ wsl2 với '/mnt/c/Users/Ryan.Nguyen/Desktop/test'
+Tức ta copy vào folder đó trên máy ảo là máy host tự cập nhật. Sau đó bind thư mục ở local với thư mục của máy ảo để "sửa file ở máy host thì file máy ảo cũng đổi theo"
+Ở đây máy ảo làm việc trên thư mục /nest, máy host làm việc tại /mnt/c/Users/Ryan.Nguyen/Desktop/test
+
+Sau khi đã copy:
+Nếu là powershell: docker run --name testhieu -p 3000:3000 -v 'C:/Users/Ryan.Nguyen/Desktop/Tài liệu/Tools/Docker/Docker/Docker Intermediate/Thực hành docker hub':/nest hieucuopbien123/testhieu
+Nếu dùng wsl2 terminal: docker run --name testhieu -p 3000:3000 -v '/mnt/c/Users/Ryan.Nguyen/Desktop/Tài liệu/Tools/Docker/Docker/Docker Intermediate/Thực hành docker hub':/nest hieucuopbien123/testhieu
+Hoặc: docker run --name testhieu -p 3000:3000 -v $(pwd):/nest hieucuopbien123/testhieu
+
+--> Vào trong Docker Desktop sẽ thấy logs cũng như hệ thống file của 1 container
+
+Thay vì mỗi lần sửa code là khởi động lại container, ta dùng luôn node --watch hay nodemon để hot reload.
+Hot reload với docker phải config thêm nếu dùng typescript: config watchOptions trong tsconfig.json, câu lệnh --watch phải thêm --tsc trong package.json
+
+-> Quy trình:
+Code js bth và tạo docker file
+Build image => Chạy các câu lệnh trong Docker file và lưu thành 1 images với các options như EXPOST, CMD
+Push lên dockerhub public
+Mọi người pull về
+Mọi người run => Máy ảo wsl2 sinh ra là 1 hệ điều hành fresh riêng luôn và chạy dự án trên hệ điều hành đó với câu lệnh CMD tương ứng. Ở đây mn có thể copy code trong máy ảo ra máy host và bind vào để sửa đổi các thứ.
+
+=> Giải pháp này khác với VM ở chỗ VM code thẳng global từ xa luôn còn cái này vẫn là pull về máy code.
+
+Hiểu bản chất rồi thì khi người dùng 
+
+-> Dùng docker compose: 
+Việc dùng volumns ánh xạ thư mục máy host vào container khiến khi ta chạy "docker compose down" thì mọi container liên quan bị xóa nhưng data k mất vì đã lưu ở local đó rồi 
+
+Ta phải specific biến môi trường dùng trong docker-compose trong file .env ở cùng cấp thư mục. Nếu muốn dùng ở 1 file với tên khác thì phải dùng kiểu VD
+services:
+  myservice:
+    env_file:
+      - ./env_vars.txt
+=> Các biến môi trường đó sẽ được dùng trong code VD trong nodejs lấy từ process.env.<>
+

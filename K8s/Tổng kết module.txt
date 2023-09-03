@@ -2,14 +2,340 @@ K8s
 
 
 # Basic
-Kubernetes(K8s hay kube) là container platform mã nguồn mở giúp tự động deploy, quản lý và scaling ứng dụng container.
-Nó lo nhiều chức năng khác so với docker. VD ta đã deploy 3 server khác nhau lên docker, xong muốn scale up lên 40 server, và cũng phải quản lý cả 40 server, restart nếu nó die, nếu chỉ dùng docker thì phải quản lý thủ công.
-
+-> Cấu trúc basic:
 Master[etcd, controller, manager, scheduler <-> kube apiserver] <-> Worker1[Container] | <- Load balancer <- User
                                                                 <-> Worker2[Container] | 
+=> Kubenetes cluster gồm 1 master và nhiều worker node:
+- Master Server là máy chủ chính điều khiển cả cụm máy
+etcd lưu cấu hình chung cả cụm máy. etcd chạy tại máy master và là 1 dự án open source cung cấp dịch vụ lưu trữ dữ liệu theo key-val
+kube-apiserver chạy tại máy master cung API để client tương tác với K8s
+kube-scheduler giúp lựa chọn node nào để chạy ứng dụng dựa vào nhiều yếu tố để đảm bảo hệ thống ổn định
+kube-controller điều khiển trạng thái cluster để tương tác tạo, xóa, update tài nguyên
+- Worker node: Worker[Pods[Container], kubelet, kube proxy]
+Container có thể là docker or các nền tảng khác để chạy container
+Kubelet chạy trên mọi máy node để giám sát chạy hay dừng các ứng dụng trên node
+kube-proxy cung proxy để các ứng dụng ngoài vào mạng cluster tùy theo traffic
 
-Kubenetes cluster gồm 1 master và nhiều worker node
-Worker node: Worker[Pods[Container], kubelet, kube proxy]
-Container có thể là docker or các nền tảng khác để chạy container; Kubelet giao tiếp với API server và quản lý container; kube-proxy quản lý traffic các ứng dụng chạy trong worker node đó
+
+
+# Tạo K8s
+Cần ít nhất 1 máy chạy K8s và Docker (Nếu chỉ có 1 máy sẽ tạo ra 1 cluster chỉ có 1 master node). Máy đầu tiên khởi tạo là master, các máy khác kết nối vào là worker.
+Để chạy K8s có nhiều cách:
+- Dùng tool minikube
+- Mua từ các nhà cung cấp như Azure, GG Cloud, AWS
+- Dùng ngay K8s trong Docker Desktop: Docker Desktop phiên bản mới tích hợp sẵn K8s, chỉ cần kích hoạt mà k cần cấu hình phức tạp là có cluster chỉ có 1 node. Nó thg dùng cho development chứ production phải có nhiều node.
+
+-> Tạo K8s cluster từ Docker Desktop: Settings -> Enable Kubernetes là xong
+kubectl là trình cli tương tác vói K8s: 
+kubectl version --short
+kubectl cluster-info => show url để connect vào
+kubectl get nodes => lấy mọi node trong cluster. Nếu chạy 1 node thì chỉ có master
+kubectl get pods -A => show các pods chạy trong mọi namespace (khi có -A option)
+
+kubectl describe node/<tên node> => Hiển thị thông tin về 1 node trong k8s. VD pods: 110 là cluster này chứa max 110 container bên trong
+
+-> Thực hành tạo K8s nhiều nodes => có thể triển khai vào hệ thống thực tế:
+master.xtl có ip 192.168.10.100 là node master
+worker1.xtl và worker2.xtl có ip 192.168.10.101 và 192.168.10.102 là 2 workers
+Tất cả đều chạy HĐH CentOS7, cài Docker và K8s
+=> Để tạo nhiều node thì phải có nhiều máy. Ta có thể giả lập có nhiều máy bằng VM Virtual Box.
+
+--> Nếu cài CentOS7 Docker K8s thủ công trên từng máy sẽ tốn thời gian. Ta dùng công cụ Vagrant để tự động hóa quá trình tạo máy ảo và cài ứng dụng trên máy ảo ez. Vagrant tương thích với nhiều loại VM như HyperV, VM Virtual Box
+Chỉ cần tạo file Vagrantile setup cách tạo máy ảo như nào là Vagrant tự động tạo
+Tải Vagrant: https://xuanthulab.net/su-dung-vagrant-tao-va-quan-ly-may-ao.html
+
+Các lệnh basic nhất để thao tác:
+vagrant version
+vagrant init => sinh file basic Vagrantfile
+vagrant up => tạo máy ảo. Phải cd vào đúng thư mục chưa Vagrantfile trước
+vagrant halt => dừng máy ảo
+vagrant reload => khởi động lại máy ảo, có đọc lại cấu hình trong Vagrantfile
+vagrant destroy => xóa máy ảo
+
+--> Tạo các file Vagrantfile cho 3 máy và chạy vagrant up
+=> Lỗi với máy window khi dùng Vagrantfile với VMBox => K dùng Vagran với window
+URL: https://www.youtube.com/watch?v=yOBeQNGX278&list=PLwJr0JSP7i8D-QS50lYsXpAg-jYoqxMVy
+
+--> Các bước sau:
+Sau khi tạo máy ảo mà có enable SSH, ta có thể kết nối vào máy ảo bằng SSH. VD: ssh root@192.168.10.100 -> nhập password là vào được terminal của VM
+
+Vào máy master, chạy: kubeadm init --apiserver-advertise-address=172.16.10.100 --pod-network-cidr=192.168.0.0/16
+=> Lệnh này giúp cấu hình nó thành master node của k8s cluster. Trong 1 cluster thì các node muốn liên lạc với nhau phải thông qua 1 cái plugin network (như hình Cấu trúc.png). Tham số --pod-network-cidr sẽ dùng plugin network tên là Calico trong K8s. Sau đó phải cài calico
+
+Ở máy master: kubeadm token create --print-join-command
+=> Nhập output vào client sẽ kết nối tới master node từ worker node thông qua token
+
+Chạy xong là có 2 K8s, 1 là từ Docker Desktop, 1 là từ Docker nhiều node tự tạo:
+Dùng kubectl ở bên ngoài máy host sẽ truy cập vào k8s của Docker Desktop
+Dùng kubectl ở trong máy ảo node master sẽ truy cập vào k8s nhiều node tự tạo
+=> Trong thực tế ta có thể triển khai system k8s ở bất cứ đâu và muốn dùng kubectl ở ngay máy host mà truy cập được vào. 
+
+Ta phải connect kubectl ở máy host vào k8s ở remote:
+kube config view => phải chạy trong git bash, nó show kubectl hiện tại đang connect tới k8s cluster nào và thông tin tk xác thực để connect với cluster đó.
+Tức để kubectl local connect được tới cluster khác thì phải xem được thông tin cluster và tk xác thực để login vào cluster đó. Thông tin này được lưu tại:
+~/.kube/config
+=> Ta vào master node ở remote, lấy file config ở remote ra, lấy file config ở local ra. Trộn 2 files lại với nhau và thế vào file config ở local. Lúc đó kubectl ở local sẽ connect được tới 1 trong 2 systems k8s
+Chi tiết cách trộn: https://www.youtube.com/watch?v=yOBeQNGX278&list=PLwJr0JSP7i8D-QS50lYsXpAg-jYoqxMVy => phút 35
+
+kubectl config get-contexts => lấy list các kube cluster được kết nối trong kubectl hiện tại theo config
+kubectl config use-context <name context> => set kubectl connect với cluster nào.
+
+Laptop quản lý - dùng kubectl - có nhiều context là các cluster khác nhau
+Mỗi cluster có 1 master node và nhiều worker node
+Mỗi node có docker và các pods
+Mỗi pods chứa nhiều container khác nhau thuộc cùng 1 mạng mà có thể chia sẻ tài nguyên và cùng vòng đời - Các container chạy từng ứng dụng cụ thể trong hệ thống
+
+
+
+# Dùng K8s Dashboard
+Để tránh lag, ta nên mở rộng dùng wsl2 với nhiều bộ nhớ và CPU hơn. Nếu bị lag:
+Window + R -> %USERPROFILE% -> Tạo file .wslconfig nếu chưa có -> Thêm vào:
+[wsl2]
+memory=8GB                                
+swap=4GB                           
+processors=4
+-> Restart lại docker (tốt nhất là tắt máy bật lại)
+
+Công cụ quản lý như kubectl nhưng là trên giao diện. 
+Nó là tool độc lập với k8s, ta chỉ cài trong máy xong muốn dùng giao diện cho hệ thống k8s nào thì connect vào thôi
+
+-> Version 3 là breakchange, ta dùng tạm version 2
+Tải file version 2.7: https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+Tổng hợp mọi phiên bản: https://github.com/kubernetes/dashboard/releases
+
+Đảm bảo là k8s đang chạy trong máy là có 1 cluster
+
+--> Chạy Dashboard với many nodes
+Sửa dùng NodePort để Dashboard export ra ngoài qua 1 cổng. Cổng mặc định trong k8s hợp lệ là 30000-32767, sau này có thể sửa khi chạy cluster với tham số --service-node-portrange:
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: kubernetes-dashboard
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+spec:
+  type: NodePort
+  ports:
+    - port: 443
+      targetPort: 8443
+      nodePort: 31000
+  selector:
+    k8s-app: kubernetes-dashboard
+
+Xóa Secret kubernetes-dashboard-certs để tự setup cert openssl sinh ra:
+
+Run: 
+kubectl apply -f <file yaml cần chạy> => Khi chạy dashboard nó sẽ tạo ra các thứ như trong file yaml trong 1 namespace ta định nghĩa trong file là kubernetes-dashboard.
+kubectl get po -n kubernetes-dashboard => hiển thị mọi port namespace này chạy. Đảm bảo mọi port phải hoạt động sau khi tạo certs
+
+Tự tạo certs:
+Tạo 1 thư mục certs
+openssl req -nodes -newkey rsa:2048 -keyout certs/dashboard.key -out certs/dashboard.csr -subj "/C=/ST=/L=/O=/OU=/CN=kubernetes-dashboard"
+openssl x509 -req -sha256 -days 365 -in certs/dashboard.csr -signkey certs/dashboard.key -out certs/dashboard.crt
+=> Nếu openssl k được set biến global thì vào thẳng thư mục chứa openssl.exe để chạy
+=> Lệnh này chạy bằng wsl2 vì window bị lỗi url. 
+
+Kết quả nó sinh 3 files để tạo ra Secret kubernetes-dashboard-certs trong namespace kubernetes-dashboard. 
+kubectl create secret generic kubernetes-dashboard-certs --from-file=certs -n kubernetes-dashboard
+=> --from-file=certs tức lấy key trong thư mục certs để tạo Secret
+=> Khi ta mua tên miền các thứ sẽ nhận được tương ứng thay vì tự tạo như này
+
+Xem thông tin:
+kubectl get secret -n kubernetes-dashboard => lấy mọi secret trong namespace kubernetes-dashboard, hoặc dùng -A là lấy từ mọi namespace
+kubectl describe secret <tên secret> -n kubernetes-dashboard => lấy detail của secret nào 
+
+Chạy dashboard:
+kubectl get node -o wide => Hiển thị các node đang chạy trong cluster với ip cụ thể 
+Lấy IP internal ra (nếu chạy trong cùng máy này) và thêm vào cổng mà service Dashboard cung ra: https://IP:port
+
+Hiện ra giao diện, cần đăng nhập dùng token. Tức ta cần tạo ra 1 user và phân quyền cho nó được quyền truy cập vào dashboard và lấy token của user đó:
+URL: https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md
+
+Triển khai 2 thành phần trong admin-user.yaml là ServiceAccount và ClusterRoleBinding rồi apply nó: kubectl apply -f admin-user.yaml
+=> Nó sẽ tạo ra 1 secret mới cho user. Ta lấy token bằng: kubectl -n kubernetes-dashboard create token admin-user 
+Copy paste vào dashboard là xem được
+
+-> Chạy Dashboard với kube docker:
+K8s -- Context1 (Cluster) -- Namespace1 -- Dashboard -- Connect to node1 
+                          -- Namespace2 -- Dashboard -- Connect to node2
+    -- Context2 (Cluster) -- Namespace1 -- Dashboard -- Connect to nodea
+
+Để chạy Dashboard với docker desktop, ta chuyển sang đúng context là đang dùng kubectl connect với K8s cluster tên là docker-desktop chứ kp k8s của dự án many nodes.
+
+Config tiếp y hệt như trên nhưng ta k cần chỉnh sửa gì file dashboard.yaml, kể cả SSL cũng k cần set lại vì localhost chạy được ngay bằng http. Nếu connect độc lập với remote sẽ buộc có SSL. Do đó k cần tải file về sửa nữa:
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+kubectl get namespace => xem mọi namespace
+kubectl delete namespace kubernetes-dashboard => xóa namespace tên là kubernetes-dashboard
+
+Vì k cần sử dụng nodeport và ssl nên ta dùng proxy để cung ra ngoài: kubectl proxy
+Giả sử nó hiện ra url để truy cập dashboard là: 127.0.0.1:8001
+=> URL: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+--> Lệnh khác tương tự: kubectl proxy --address="192.168.0.101" -p 8001 --accept-hosts='^*$'
+
+Để đăng nhập bằng token, vẫn phải làm bước tạo user có quyền truy cập vào dashboard
+
+-> Khi có nhiều namespace, ta có thể gọi hàm apply triển khai thêm dịch vụ vào namespace cụ thể nào với:
+kubectl apply --namespace <namespace-name> -f <resource-file.yaml>
+
+-> Để chạy 1 container mới trên 1 node k8s:
+Ta phải gắn cho node 1 cái label: kubectl label nodes <node-name> redis-node=true
+
+R viết file yaml run container ở 1 node có label đó thông qua NodeSelector. Thuộc tính này giúp xđ nodes nào để chạy cái pods mới này:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:latest
+        ports:
+        - containerPort: 6379
+      nodeSelector:
+        redis-node: true
+
+Run: kubectl apply -f redis-pod.yaml
+
+
+
+# Dùng K9s
+Tool cli giống kubectl tương tác với cluster k8s nhưng trực quan hơn.
+
+Cài trên wsl2: sudo snap install k9s => phải cài "sudo apt install snapd" ở bản ubuntu cũ, bản mới thì có sẵn
+=> Chạy trên ubuntu thì phải cài genie rồi khởi động systemd xong login vào snap bị lỗi éo gì ấy
+
+Cài trên window ez: https://github.com/derailed/k9s/releases
+
+-> Cách dùng:
+kubectl đang tương tác với cluster nào thì k9s cũng tương tác với cluster đó. Nên có thể chuyển qua lệnh chuyển context của kubectl
+Run: k9s => hiển thị giao diện cli của k9s liên kết với kubectl 
+
+URL: https://www.youtube.com/watch?v=FW0eQu_QQ3k
+
+
+
+# Lệnh K8s
+-> Tương tác với Pods:
+kubectl get pods
+kubectl get pod -o wide => show nh thông tin về pod hơn
+kubectl get pod -o wide -n <tên namespace> => khi xác định cụ thể namespace
+kubectl get pod -A => show pods ở mọi namespace
+kubectl get pod -l "app=mypod" => show pods có nhãn app=mypod
+
+kubectl explain pod --recursive=true => Xem cấu trúc định nghĩa pod file yaml
+kubectl apply -f firstpod.yaml => triển khai tài nguyên định nghĩa trong file yaml
+kubectl delete -f firstpod.yaml => xóa tài nguyên tạo ra từ yaml
+kubectl describe pod/namepod => lấy thông tin của pod tên là namepod, nếu trong namespace khác thì thêm -n <namespace-name>, VD nó show node chạy pod, ip của pod
+kubectl logs pod/podname => xem logs của pod
+kubectl exec mypod command [arg] => Chạy lệnh trong container của pod tên là mypod, nếu pod có nhiều container thì thêm -c <tên container>
+kubectl exec -it mypod bash => VD chạy lệnh bash của container trong POD mypod và gắn nó vào terminal hiện tại để tương tác trực tiếp
+kubectl proxy => tạo server proxy truy cập đến tài nguyên của cluster http://localhost/api/v1/namespaces/default/pods/mypod:8085/proxy/ => truy cập đến container có tên là mypod trong namespace mặc định
+kubectl delete pod/mypod => xóa pod tên mypod
+
+-> Tương tác với node:
+kubectl get nodes
+kubectl describe node <tên-node>
+kubectl label node worker1.xtl tennhan=giatrinhan => gắn nhãn giatrinhan vào node worker1.xtl 
+kubectl get node -l "tennhan=giatrinhan" => lấy node có nhãn là tennhan
+kubectl label node worker1.xtl tennhan- => xóa nhãn bắt đầu bằng tennhan... khỏi node worker1.xtl
+
+Các thông tin về node:
+- Internal ip là địa chỉ node sử dụng trong nội bộ cluster
+External ip là địa chỉ node có hiệu lực từ ngoài cluster gọi đến
+
+- Thông tin trạng thái đang chạy của node:
+Ready: true là chấp nhận triển khai chạy các pod
+MemoryPressure: true nếu cạn kiệt bộ nhớ
+DiskPressure: true nếu cạn kiệt đĩa lưu trữ
+NetworkUnavailable: true nếu cấu hình mạng lỗi
+
+
+
+# Pod trong K8s
+-> Phân biệt:
+- Container là 1 software package chứa mọi thứ cần để chạy 1 phần của software, bao gồm code, runtime, system tools, lib. 1 Pod có thể có nhiều container. Các container chia sẻ với nhau thông qua cùng volumne và network.
+- Pod biểu diễn 1 or nhiều container chạy cùng nhau trên 1 node. Pods được scheduled để chạy trên các nodes trong 1 cluster. Nó thường tạo gắn với 1 namespace và có thể tương tác với các pods khác trong cùng namespace or cross namespace
+- Cluster là đơn vị lớn nhất biểu diễn toàn bộ môi trường mà các ứng dụng chạy. Cluster có thể chứa multiple namespaces, multiple nodes.
+- Node là machine nằm trong 1 cluster có nhiệm vụ chạy các container. 
+- Namespace: giúp sắp xếp và chia cách các resources trong 1 cluster. Các pods và resouces khác có thể được tạo trong các namespace khác nhau để tránh naming conflict chẳng hạn.
+- Context: là thứ user-defined reference tới cluster và namespace nào đó. Vì có nhiều namespace nhưng kubectl hiện tại chỉ làm việc với 1 namespace và context này để xác định điều đó. Chuyển context nếu muốn kubectl của ta tương tác với 1 namespace khác
+
+=> K8s - Clusters - Namespaces (Contexts) - Nodes - Pods - Containers => Trong đó thì namespace chứa nhiều nodes và các pods chứa nhiều containers được sắp xếp để chạy trên nodes nào là tùy
+
+-> Pods là thành phần nhỏ nhất của K8s:
+Pods là thành phần nhỏ nhất để k8s thực hiện việc nhân bản. Khi cần thì K8s có thể cấu hình nhân bản ra để tránh quá tải or phòng ngừa lỗi khi node die. Còn container kp là gắn với k8s mà docker. 
+Pods có thể có nhiều container và pod là đơn vị để scale. Ta nên cấu hình pods càng ít container càng tốt. Thông thg là 1 pod chạy 1 container, còn 1 pod mà chạy nhiều container thg là khi cần đóng gói ứng dụng với sự phối hợp chặt chẽ từ nhiều container chia sẻ ổ đĩa và mạng cho nhau. 
+
+Mỗi pods gắn với 1 ip. VD Pod 1 là 10.10.10.1 và pod 2 có ip là 10.10.10.2 trong 1 mạng cục bộ chứa các pods. Các container trong pod chia sẻ cùng địa chỉ ip của pod đó và có thể liên lạc với nhau qua mạng cục bộ đó, và cả ổ đĩa. 
+
+-> Ta có thể tạo pod trực tiếp (ít dùng) hoặc triển khai qua cấu hình Deployment thì sẽ có 1 controller thực hiện tạo pods hộ. 
+Dùng controller tạo pods sẽ cung cấp sẵn khả năng giám sát, quản lý, phục hồi. 
+
+Lệnh kubectl run giúp tạo pods nhưng ta nên khai báo config trong .yaml rồi tạo pod ok hơn với:
+kubectl explain pod --recursive=true 
+=> ref tới "Tạo pods"
+
+kubectl describe pod/<tên pod>
+=> Thông tin của pods hiện ra là ip và port. Tuy nhiên ip này là nội bộ chỉ các node trong cluster liên lạc với nhau, khi muốn bên ngoài truy cập vào service thì dùng:
+kubectl proxy
+Hoặc:
+kubectl proxy --address="0.0.0.0" --accept-hosts='^*$'
+=> Nó sẽ mở ra bên ngoài để truy cập qua: http://localhost/api/v1/namespaces/default/pods/mypod:8085/proxy/
+Ta cũng có thể chuyển port truy cập với: kubectl port-forward mypod 8080:8085
+
+
+
+# ReplicaSet trong K8s
+=> ref tới "ReplicaSet"
+
+Khi CPU hay bộ nhớ của 1 node không đủ thì k thể tạo tạo thêm POD cho node đó.
+Việc tạo thêm pod có ích khi máy thừa bộ nhớ và CPU nhưng các pod trong máy vẫn đang bị quá tải vì quá nhiều request. Việc tạo thêm pod trong node đó sẽ giúp tận dụng hết công suất chiều dọc hiện có của máy
+
+-> ReplicaSet là 1 controller trong K8s quản lý các nhân bản pod khi đang chạy
+Sau khi chạy replica set, nó sẽ xóa hay tạo pod mới sao cho tuân thủ đủ số lượng replica
+
+VD ta xóa pod, replicaset sẽ thay thế bằng pod mới cho đủ lượng replica. Nếu xóa hẳn ReplicaSet thì các pod cũng xóa theo
+
+-> Lệnh:
+kubectl get rs => lấy các replicaset
+kubectl describe rs/rsapp => lấy thông tin về replicaset tên là rsapp
+kubectl delete replicaset <replicaset-name> 
+=> Ta describe 1 pod ra sẽ thấy Controlled By là thông tin pod được kiểm soát điều khiển bởi Controller nào
+
+-> Horizontal pod autoscaler với replicaset:
+Là chế độ tự động nhân bản pod dựa vào mức độ hoạt động CPU đối với các pod. Nếu 1 pod quá tải sẽ tự nhân bản thêm và ngược lại thì xóa đi. 
+Số nhân bản dao động trong khoảng min-max cấu hình chứ không fix cứng như trên.
+
+Ta phải tạo 1 HPA để tự động scale theo mức độ CPU.
+C1: kubectl autoscale rs rsapp --max=2 --min=1
+=> Dùng dòng lệnh tạo 1 hpa tên là rsapp tham chiếu đến replicaset tên là rsapp để tự scale các pod với thiết lập min-max các pod
+kubectl get hpa => liệt kê các hpa
+
+C2: Tạo hpa từ file yaml => VD ref tới "HPA"
+
+
+
+# Deployment
+Dùng replicaset độc lập không hay, họ thường dùng Deployment tốt hơn. Mỗi Deployment sở hữu 1 ReplicaSet riêng.
+
+
+
+# Other
+-> Dừng series từ Deployment:
+https://xuanthulab.net/deployment-trong-kubernetes-trien-khai-cap-nhat-va-scale.html
+
+Còn có PV, PVC, Ingress, Rancher2, Deployment, Service Headless, DaemonSet, CronJob, NFS, Secret
 
 

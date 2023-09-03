@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tools
+  labels:
+    app: tools
+spec:
+  containers:
+  - name: tools
+    image: ichte/coretools
+    resources: {}
+    command: ["/bin/bash"]
+    args: ["-c", "while true; do echo 'busybox running'; sleep 10;done"]
+
+# Khai báo pod sử dụng image ichte/coretools (một image từ Dockerfile với Debian có cài đặt một số công cụ như vim, curl, wget ... để kiểm tra)

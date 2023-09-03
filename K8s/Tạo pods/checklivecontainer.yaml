@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+  labels:
+    app: mypod
+spec:
+  containers:
+  - name: mycontainer
+    image: ichte/swarmtest:php
+    ports:
+    - containerPort: 8085
+    resources: {}
+
+    livenessProbe:
+      httpGet:
+        path: /healthycheck
+        port: 8085
+      initialDelaySeconds: 10
+      periodSeconds: 10
+
+# Check container còn sống trong pod không với livenessProbe
+# Đường dẫn kiểm tra là /healthycheck, nó trả về mã header trong 200-400 sẽ được coi là còn sống (ta phải tự viết ứng dụng trả mã này). Cứ 10s check 1 lần.

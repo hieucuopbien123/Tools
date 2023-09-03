@@ -7,6 +7,15 @@ Có nhiều công cụ hỗ trợ sẵn github actions như vercel, nó hỗ tr�
 
 
 # Basic
+Quy trình CI: tích hợp mã nguồn lúc dev push code lên, CI sẽ check sự thay đổi và tiến hành build code, chạy các test case, đưa ra thông báo lỗi nếu có (qua email or chat), hợp nhất mã nguồn
+Quy tình CD sau đó: deploy lên các môi trường khác nhau, release version mới và monitor ứng dụng ở các môi trường
+
+Ta có thể trigger build mỗi khi push code hoặc tự động CI ở 1 mốc tg cố định trong ngày. Tuy nhiên để deploy lên production, chỉ nên làm tay hoặc confirm từ người có quyền để đảm bảo deliver sản phẩm tới người dùng là hoàn hảo
+
+Các event có thể trigger: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push
+Tương tác với repo qua API => ít dùng:
+https://docs.github.com/en/rest/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event
+
 -> Actions
 Ta có thể bắt mọi event tương tác với github và làm bất cứ điều gì thông qua workflows. Workflows có sẵn được cộng đồng tạo có thể dùng, hoạt động với tất cả mọi ngôn ngữ và nền tảng.
 
@@ -16,10 +25,22 @@ Ta có thể tự tạo actions và cho lên marketplace.
 Có thể viết actions bằng bất cứ ngôn ngữ nào miễn có thể compiled ra JS, tối thiểu phải có 2 file là index.js và action.yml config cho chạy index.js
 
 K nên tạo 1 action làm quá nhiều thứ vì sẽ rất khó debug lỗi cũng như khi thêm bớt các step tính năng mới, ta sẽ phải viết lại actions. 
+Steps có thể là 1 action hoặc commands
+
+Khi ta tạo actions và nhiều người khác dùng nó, xong ta code sửa đổi actions thì nên tạo ra version mới cho nó để đảm bảo ứng dụng có sự thay đổi nào sẽ chạy với action version nào. Tránh những người khác chạy action version lỗi khi dùng với version code của repo hiện tại
+VD: 
+steps:
+  - name: My Action Step
+    uses: owner/repo@v1.0.0
+=> Báo rằng acions này dùng với repo nhánh có version v1.0.0
+
+Nên viết docs cho github actions báo những tham số cần điền hay version của actions
 
 -> Workflows
 Mọi thứ luôn bắt đầu bằng event được xác định ở đầu file yml. Vd: push, pull_request, public, schedule (tự động chạy sau 1 khoảng tg), workflow_dispatch (trigger 1 actions thủ công, có thể biến thành api để mỗi khi call api đó là actions được thực hiện),...
 Workflow file yml phải để trong folder .github/workflows
+
+Khi dùng workflow_dispatch, vào tab Actions và ấn chạy thủ công workflow đó
 
 Có thể dùng docker sẽ chỉ chạy được trên linux vm của github actions. Đó là dùng container actions
 Có thể dùng secret or biến global trong phạm vi repo hay organization 1 nhóm các projects đều được.
@@ -52,12 +73,266 @@ jobs:
         npm test
       env: 
         CI: true
+=> Ở đây chỉ có 1 job là build, có thể tạo nhiều jobs. Các jobs sẽ tự động chạy đồng thời, nếu muốn theo thứ tự thì thêm trường needs vào. VD dùng linux sẽ tự dùng github hosted runner for linux.
 
 => ref tới actions public của người khác thông qua: <user>/<name of repo>@v<version>
 VD: actions/setup-node@v1   
 
+--> Starter workflow: workflow có sẵn để dùng tiếp k cần tạo từ scratch. Chọn từ tab Actions của github
+VD: "Simple workflow" chứa minimal mọi thứ cần để setup, rồi chọn đủ loại actions có sẵn thêm vào từ marketplace online ngay trong tab Actions của github
+
+Thông thường trong mọi steps job đều có: - uses: actions/checkout@v3
+=> Luôn dùng, chỉ k dùng khi klq tới CI/CD. Nó sẽ checkout repo vào runner để thực hiện workflow. Nch là buộc có để workflow access vào code trong repo mà thực hiện chứ
+
+
+
+# Tổng hợp syntax basic cho file yml 
+URL: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+
+name: CI
+on:
+  push:
+    branches: [ "main" ]
+  push: 
+    branches:
+      - develop
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+  repository_dispatch: 
+    types: [MyCustomEventName]
+jobs:
+  build:
+    name: Install something
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: 
+        node-version: [10.x]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run a one-line script ${{matrix.node-version}}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{matrix.node-version}}
+        run: |
+          echo Add other actions to build,
+          echo test, and deploy your project.
+          echo ${{github.event.client_payload.paramA}}
+        env: 
+          CI: true
+          GITHUB_TOKEN: ${{secrets.SOMETHING_ELSE}}
+        if: ${{ 'aaa' = 'aaa' }}
+      - uses: actions/upload-artifact@master
+        with:
+          name: webpack artifacts
+          path: public/
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request'
+    environment: 
+      name: Development
+      url: "http://dev.myapp.com"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run test
+        run: echo Test is ${{secrets.MY_SECRET}}
+        if: ${{env.arg1 == env.arg2}}
+      - name: Test repo dispatch 
+        uses: peter-evans/repository_dispatch@v1.1.2
+        with: 
+          token: ${{ secret.REPO.PAT }}
+          event-type: MyCustomEventName
+          client-payload: '{"testboolean": 123}'
+
+- Ở đây có dùng actions/upload-artifact@master để upload artifact sinh ra bởi webpack. Sau khi generate, artifact sẽ lưu trong thư mục public, nó cũng dùng để lưu bundled JS file, optimized CSS file ấy.
+Cái này thường dùng khi ta build mọi thứ sẽ upload vào 1 thư mục. Sau đó deploy download artifacts từ path thư mục đó rồi deploy lên nền tảng nào tùy ý
+- Sau with có thể là bất cứ thứ gì tùy vào actions, nó cung options cho actions hiện tại
+
+Cơ chế basic là định nghĩa điều kiện chạy workflow này với on
+Định nghĩa các jobs và mỗi jobs có:
+  các điều kiện để chạy được jobs
+  từng steps thực hiện jobs:
+    Mỗi steps có thể use các package
+    with để thêm params cho các package sử dụng
+    run để cụ thể việc chạy lệnh nào
+
+-> VD cấu hình workflow events:
+1 event có thể trigger 1 workflow khi nó xảy ra trên repo và trả về 1 commithash và git ref. 
+
+on: push 
+=> bắt push mọi branch
+
+on: [push, pull_request] 
+
+on: 
+  push: 
+    branches: 
+      - main
+  pull_request: 
+    branches: 
+      - main
+  page_build:
+  release:
+    types:
+      - created
+=> Trong github có cái gọi là Github Pages cho phép user host và publish static websites trực tiếp từ repo. Kết hợp với CI/CD thì thay đổi code repo là github tự build và host lên cho ta. Với domain có sẵn, nó free. Ở đây page_build bắt sự kiện khi có code thay đổi và Github Pages rebuild lại websites. Nó khác push ở chỗ website phải rebuild lại và nó sẽ giúp báo trạng thái build thành công hay không.
+=> Release created event là khi 1 bản release mới được phát hành. Ta có thể trigger bằng cách ấn nút Releases trong repo. Mỗi release tương ứng 1 version mới được phát hành
+
+on:
+  push:
+    paths-ignore:
+    - 'docs/**'
+=> Bắt event push khi code đổi nhưng trừ folder docs thay đổi thì k tính. Ngược với:
+on:
+  push:
+    paths:
+    - '**.js'
+
+--> Trigger workflow theo schedule định sẵn bằng POSIX cron syntax:
+on:
+  schedule:
+    - cron:  '*/15 * * * *' // thực hiện trigger mỗi 15 phút
+=> Nó sẽ thực thi trên sources của commit mới nhất của default branch. Cú pháp Cron syntax có 5 trường ngăn khoảng trắng:
+<Phút> <giờ> <ngày trong tháng> <tháng> <ngày trong tuần>
+Toán tử: 
+* là tất cả giá trị;
+
+, là giá trị trong danh sách
+VD: 2,10 4,5 * * * là chạy ở phút thứ 2, 10 và giờ thứ 4,5 của mọi ngày 
+
+- là khoảng giá trị
+VD: 0 4-6 * * * => mỗi 0 phút, từ 4-6 giờ của mọi ngày
+
+/ là bước nhảy giá trị
+VD: 20/15 * * * * là chạy mỗi 15 phút từ phút thứ 20 mỗi giờ (tức chạy ở các phút 20, 35, 50 của mỗi giờ)
+
+=> Còn rất nhiều cách để trigger workflow như tạo comment hay xóa branch,...
+
+
+
+# Debug 
+Có thể xem log trong github
+
+Dùng secret ACTIONS_STEP_DEBUG. VD:
+steps:
+  - name: My Step
+    run: echo "Hello, World!"
+    env:
+      ACTIONS_STEP_DEBUG: true
+=> Sẽ show chi tiết thông tin debug của từng bước, show warning và lỗi chi tiết. Nó tạo nhiều output đầu ra nên chỉ dùng khi thực sự cần.
+
+Dùng github actions extension của VS sẽ tự check lỗi logic và chỉ dẫn cho file yml. Nó chỉ hoạt động khi file yml đặt trong đúng folder .github\workflows => nên dùng
+
+-> Trong github actions có Super-Linter là repo giúp check faulty code của đủ loại ngôn ngữ mà github hỗ trợ. Việc check bằng super linter trước khi commit giúp tránh các lỗi cơ bản => cũng k cần thiết mấy vì thg build thành công mới push code chứ
+VD dùng:
+- name: Run Super-Linter
+        uses: github/super-linter@v4
+        env:
+          VALIDATE_ALL_CODEBASE: true
+=> Để chạy super linter trước khi thực hiện tiếp cái khác bên dưới
+
+
+
+# Environment
+Ta có thể phân chia môi trường Dev, QA, PreProd, Prod. Mỗi môi trường có biến secret riêng và k ảnh hưởng lẫn nhau.
+
+Protection rules giúp xác định đk, VD chỉ deploy khi admin cho phép, chỉ deploy với code ở 1 branch cụ thể, tích hợp thêm các API của bên thứ 3, wait timer,... Theo dõi tất cả trong Deployments Activity log
+
+Environment ở trạng thái waiting tức đang chờ approval, inactive là chưa chạy lần nào, active là đã chạy, queued là đang chạy 
+
+-> Dùng environment:
+- Tab settings của repo hoặc organization. Chỉ có trong public repo hoặc enterprise private repo
+- Thêm config protection rules
+- Chọn branch có thể dùng kiểu: release/* thì mọi branch prefix release/ sẽ có thể deploy vào env này
+- Tạo 1 job có kiểu:
+environment: 
+  name: Development
+  url: "http://dev.myapp.com"
+sẽ tự deploy vào môi trường Development tạo từ trước và deploy với domain url phải bắt đầu bằng http/https. Có cách dùng dynamic url mà k fix cứng như này
+
+=> Tức là bên cạnh các đk if và needs, dùng environment chỉ là để thêm điều kiện protection rules nữa vào thôi. Mỗi env có 1 protection rules giúp ta chọn protection rule nào ok
+
+
+
+# Self-hosted runner
+-> Github hosted runner là máy ảo cung cấp bởi github để chạy các quy trình của github actions. Nó cung các loại runner khác nhau như ubuntu, windows, macOs.
+Mỗi job chạy trên 1 runner
+
+Bản miễn phí được dùng chạy free trên máy ảo 2000 phút 1 tháng. 
+
+Github hosted runner được quản lý bởi github. Nó tự động clear hết mọi instance sau khi thực hiện từng job xong. Điều này giúp tối ưu nhưng cũng bất tiện vì nếu ta tải các file về máy ảo, lần sau chạy nó phải tải lại và lặp lại quy trình từ đầu
+
+-> Ta có thể chạy github actions trên self hosted runner là máy ảo chạy trên hạ tầng của ta. Từ đó ta có thể quản lý hoàn toàn máy chủ và customize đủ thứ. 
+
+K nên dùng self hosted runner cho public repo vì người ngoài có thể lợi dụng nó, nếu dùng nên thêm firewall và ip allowed list cho an toàn.
+VD: nếu ta build 1 application cần dùng đến GPU chẳng hạn mà github hosted runner k có thì ta phải tự setup self hosted runner có GPU của ta. 
+
+--> Để tạo self hosted runner: Github cung sẵn script chỉ cần tải về và chạy trên self hosted VM, rồi config authentication với token là nó sẽ lắng nghe các event từ repo để thực hiện jobs tương ứng thôi.
+URL: https://docs.github.com/en/actions/hosting-your-own-runners
+
+VM selft hosted phải đảm bảo cài đầy đủ các framework, dependency cần thiết chạy ứng dụng mà ta phải setup thủ công.
+
+-> Khi có nhiều self hosted runner, có thể gom thành 1 runner group. Vd group chia theo từng đội dev, chia theo repo và organization hay nhóm các runner linux lại với nhau. Ta có thể chạy 1 runner vừa build .net app, vừa build nodejs app nhưng nên tách ra.
+
+Nên cấu hình dedicated user cho runner vì có các actions cần lệnh sudo, có actions không cần, ta nên phân quyền cho những user nào được quyền chạy các actions tương ứng. 
+
+
+
+# Secrets
+-> Các biến có sẵn của github
+GITHUB_TOKEN là biến secret dùng để tương tác với repo, nó có thể truy cập bởi mọi actions. Nó tự động được thay đổi liên tục khi dùng để bảo mật nên có bắt được cũng k dùng được 
+
+Organization secret sẽ áp dụng với mọi repo trong organization, phải trả phí mới có. Repo secret free sẽ ghi đè organization secret nếu trùng tên.
+Environment secret sẽ ghi đè cả 2 repo secret và organization secret khi dùng đúng môi trường đó. Chỉ user có quyền mới add và edit được secret đó
+
+Secret k thể lấy ra dùng trong app. Khi fork 1 repo, sẽ k fork được secret.
+Có thể dùng secret qua API hay cli hay trong file github.action nhưng k thể xem được giá trị hay in ra
+
+Tạo secret: vào settings của repo -> Ấn secrets để dùng secret của repo. Có thể vào Environment để tạo secret cho từng môi trường
+Có tool Azure key vault trong marketplace giúp lấy secret ra output variables của các actions để dùng trong workflow
+
+Mọi actions thấy trên giao diện của github actions đều có thể làm qua API và CLI, kể cả update secret hay xem status của workflow
+
+
+
+# Automation Parameter.
+VD ta bắt khi 1 event custom xảy ra thì lấy giá trị dùng trong workflow:
+on:
+  repository_dispatch:
+    types: [MyCustomEventName]
+Thì sau đó ta có thể dùng parameter của event trong workflow. Vd:
+echo ${{github.event.client_payload.testboolean}}
+
+Trong actions định nghĩa event ta có thể định nghĩa client-payload:
+uses: peter-evans/repository_dispatch@v1.1.2
+with: 
+  token: ${{ secret.REPO.PAT }}
+  event-type: MyCustomEventName
+  client-payload: '{"testboolean": 123}'
+
+
+
+# Thực hành github actions + docker
+=> ref tới "Tools / Docker / Thực hành docker hub"
+
+Quy trình: Dev push code lên github -> Github trigger actions -> Action1 sẽ push image đã build lên docker hub -> Action2 sẽ deploy thông qua server bên thứ 3 là digital ocean -> Cụ thể actions này dùng thẳng SSH key để connect điều khiển server -> Server này có hosting public nhưng k có domain, action sẽ yêu cầu nó pull image mà github vừa push lên docker hub về chạy như trong "Tools / Docker / Thực hành docker hub"
+
+Setup biến môi trường cho github actions trước
+Viết actions là xong
+
+-> Deploy server với digital ocean => Bỏ vì mất phí
+Vào https://cloud.digitalocean.com/projects -> create a droplet
+Tutorial: https://viblo.asia/p/cicd-github-actions-va-cac-kien-thuc-co-ban-EoW4oRMrVml
+
+Nếu CICD thành công mà public ip k hiển thị khi vào web thì AWS phải enable tường lửa public port ra ngoài, với Digital Ocean thì mặc định mở mọi port r
+
+Điều đặc biệt là khi kết hợp với docker, ta k cần quan tâm command trên server là gì hay hđh nào, kể cả server máy window cũng được, chỉ cần chạy lệnh của docker là mọi thứ done hết
+
 
 
 # Other
+Nhờ chat GPT4 sinh mẫu workflow basic cho các kiểu ứng dụng khác nhau được
 
 

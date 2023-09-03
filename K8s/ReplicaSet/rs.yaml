@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rsapp
+spec:
+  replicas: 3 
+  selector: # Chọn các pod cần quản lý theo label
+    matchLabels:
+      app: rsapp
+  template: # Định nghĩa thông tin về pod trong template để nếu ReplicaSet Controller tạo pod mới sẽ dựa vào template đó. 
+    metadata:
+      name: rsapp
+      labels:
+        app: rsapp
+    spec:
+      containers:
+      - name: app
+        image: ichte/swarmtest:node
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        ports:
+          - containerPort: 8085
+
+# Quản lý 3 nhân bản POD có nhãn app=rsapp, pod có 1 container từ image ichte/swarmtest:node
+# Triển khai với: kubectl apply -f 2.rs.yaml

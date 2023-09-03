@@ -6,8 +6,8 @@ Phần cứng -> HostOS -> Docker running có nhiều container -> các ứng d�
 
 
 -> So sánh với VM:
-Chạy Hypervisor trên HostOS(phần mềm quản lý nhiều máy ảo) -> trên Hypervisor sẽ chạy nhiều máy ảo khác nhau, mỗi máy ảo là 1 hệ điều hành riêng. Nó làm bằng cách phân chia CPU ra làm nhiều phần cho từng máy ảo và càng nhiều máy ảo sẽ càng đốt CPU. Mỗi máy ảo có 1 hệ điều hành khác nhau và trong mỗi máy ảo là 1 môi trường đều có đầy đủ thư viện các thứ để chạy ứng dụng mà ta muốn chạy trên máy ảo đó. Các VM có thể chia sẻ tài nguyên cho nhau.
-Còn Docker Engine chạy trên HostOS và trên nó sẽ có nhiều container. Chúng dùng chung hđh với HostOS, chỉ là cài thêm cac bins/libs để giống như ứng dụng chạy trên hđh ảo, nên tốc độ nhanh hơn và có thể chia sẻ tài nguyên cho nhau nhưng vẫn như dùng OS đó thật.
+Chạy Hypervisor trên HostOS(phần mềm quản lý nhiều máy ảo) -> trên Hypervisor sẽ chạy nhiều máy ảo khác nhau, mỗi máy ảo là 1 hệ điều hành riêng. Nó làm bằng cách phân chia CPU ra làm nhiều phần cho từng máy ảo và càng nhiều máy ảo sẽ càng đốt CPU (chia ở cấp độ phần cứng). Mỗi máy ảo có 1 hệ điều hành khác nhau và trong mỗi máy ảo là 1 môi trường đều có đầy đủ thư viện các thứ để chạy ứng dụng mà ta muốn chạy trên máy ảo đó. Các VM có thể chia sẻ tài nguyên cho nhau.
+Còn Docker Engine chạy trên HostOS và trên nó sẽ có nhiều container. Chúng dùng chung hđh với HostOS, chỉ là cài thêm cac bins/libs để giống như ứng dụng chạy trên hđh ảo, nên tốc độ nhanh hơn và có thể chia sẻ tài nguyên cho nhau nhưng vẫn như dùng OS đó thật. 
 
 
 -> WSL chính là ứng dụng ubuntu trên window. Phiên bản WSL2 của window mới là phiên bản chuẩn giống linux nhất, dùng sẽ k còn bị lỗi linh tinh. Cần phải cài window phiên bản chuẩn dùng được microsoft store mới tải và dùng được.
@@ -22,4 +22,10 @@ Full cài docker - wsl2: https://xuanthulab.net/cai-dat-va-chay-docker-trong-wsl
 -> Mở terminal ở bất cứ thư mục nào và gõ wsl sẽ mở wsl ở thư mục đó
 Trong FileExplorer cũng truy cập được vào cấu trúc thư mục của linux
 
+
+-> Vấn đề giải quyết:
+VD dự án có 2 người làm, 1 người dùng MacOS chạy nodejs v12, 1 người dùng Window chạy nodejs v14. Khi người này chạy ok, người kia dùng lại có lỗi do xung đột.
+=> Ta dùng docker làm môi trường đồng nhất cho cả 2 và sử dụng image node:14.x, người nào vào dự án chỉ cần chạy container lên là xong
+
+Nên nhớ docker k chỉ là cung môi trường. Ta có thể tạo Dockerfile với câu lệnh copy thư mục dự án vào bên trong máy ảo docker và build thành image rồi push lên docker hub. Khi đó bất cứ ai pull image của ta về chạy đều có thể có cả dự án luôn mà k cần lên github nữa, khi đó họ chỉ tương tác với dự án qua VM cli của docker. 
 
