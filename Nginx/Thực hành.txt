@@ -1,0 +1,40 @@
+# Setup dự án NodeJS deploy hoàn chỉnh Cloud DigitalOcean + NodeJS Express Web App + Custom Domain + Reverse Proxy Nginx + SSL certbot (DevOps)
+
+URL: https://www.youtube.com/watch?v=oykl1Ih9pMg
+
+Các bước:
+Tạo 1 dự án NodeJS và push lên github -> vào Digital Ocean create droplet -> chọn hệ điều hành ubuntu và các thông tin khác -> chọn SSH keys và hostname là tạo được 1 cloud server
+=> Cloud Server thì có loại này có loại khác. VD như Digital Ocean cho ta vào hẳn commandline hệ điều hành của VPS trong khi Heroku k làm được v mà phải thông qua git của heroku, do đó k thể dùng nginx kết hợp với Heroku bth
+
+-> Mở terminal bình thường: ssh root@<ip address cung từ VPS của digital ocean>. Phải có password tài khoản (có thể dùng tk user bth k cần dùng root) -> Thế là truy cập được vào terminal linux của VPS -> sudo apt update -> cài node và npm: sudo apt install nodejs -> tạo app và clone từ github về trên máy ảo(chứ kp command copy nào ở đây cả) -> vào app -> npm install
+=> Từ đây có thể chạy node app.js và từ public, ta có thể mở browser: <ip của VPS>:<port> ok rồi. Nhưng ta k muốn cái url xàm lol thế này nên phải dùng thêm nginx
+
+-> npm install -g pm2 -> pm2 start app.js -> app sẽ run ở background -> pm2 startup reboot để server reboot thì app sẽ backup -> có thể reboot để khởi động lại VPS luôn, sau đó pm2 tự chạy chứ k cần phải start thủ công nx vì dùng lệnh trên r
+
+=> Trước khi dùng nginx ta sẽ enable firewall trên VPS
+-> "ufw status" xem trạng thái firewall hiện tại -> ufw enable để mở firewall nhưng nó sẽ disrupt cái ssh connection hiện tại -> ufw allow ssh -> kêt nối lại connection đó -> ufw status sẽ thấy port 22/tcp được mở vì đó là của SSH mà ta đang sử dụng -> vào lại app thấy k chạy vì firewall k mở port 5000 như trước
+=> Và ta cũng k cần mở port 5000 nữa mà cái ta cần là port 80 và 143 cơ để nginx sẽ tự forward 5000 cho ta
+
+-> ufw allow http -> ufw allow https -> ufw status sẽ thấy mở thêm 80 và 143 -> sudo apt install nginx -> nginx tự được mở vào ip của server sẽ thấy -> mở file config ở: /etc/nginx/sites-available/default và sửa location / ra proxy_pass http://localhost:5000 và các setting khác -> server_name thêm 2 phiên bản url và www.url vào nginx -> save và sudo nginx -t để check -> sudo service nginx restart -> vào lại trang web ở ip của VPS chả cần port nx cũng tự vào trang web của ta
+
+-> Để có cái url server_name kia ta dùng bất cứ 1 nền tảng nào giúp đk tên miền, VD namecheap -> đăng ký 1 domain miễn phí
+
+=> Bh ta có 1 domain và ip của VPS từ digitalocean. Ta cần hợp nó lại
+-> vào networking của digitalocean thêm cái domain vào để digitalocean quản lý DNS -> tạo record cho các domain 2 phiên bản thường thì dùng dấu @ và www để digitalocean xác định url nào thì redirect vào app nào của ta -> từ trang tạo domain ở đây là namecheap, ta phải thêm custom server name vào là: ns1/ns2/ns3.digitalocean.com -> mất 1 khoảng thời gian để DNS server update nó thì ta vào url của ta là nó vào đúng app luôn
+=> Ở đây cơ chế là: vào url của ta -> DNS server gọi đến nhà cung cấp namecheap xác định server name digitalocean, gửi đến server đó rồi digitalocean gọi đến app của ta trong dự án của digital ocean gọi vào bên trong với cái url kia -> nginx bắt được đầu tiên sẽ chạy các khối http và server bên trong thì thấy khối có server_name trùng được thực thi gọi vào khối location redirect đến localhost:5000 của VPS mà cổng 5000 đang dược chạy bởi PM2 chạy 1 nodejs server bắt http request gửi trả thông tin vè lại client
+
+-> sudo add-apt-repository ppa:certbot/certbot -> sudo apt update -> sudo apt-get install python-certbot-nginx -> sudo certbot --nginx -d yourdomain.site -d www.yourdomain.site -> điền các thông tin và chọn option tự động redirect vào https khi truy cập http -> bh trang web của ta đã secure SSL -> SSL cerfiticate tự hết hạn sau 90 ngày nên phải chạy command sau để tự động gia hạn mỗi 90 ngày k cần làm thủ công: certbot renew --dry-run 
+
+=> 1 số đặc điểm: có thể có nhiều server và dùng nginx làm load balancing; ở đây có nginx nên đã có thể xử lý 1 lượng truy cập lớn rồi; nếu VPS sập và nhà cung cấp khởi động lại, k cần lo vì PM2 tự động start lại cho ta chứ ta k cần canh chừng vc đó mà làm thủ công; SSL tự động gia hạn nên chả khác nào vĩnh viễn mà hoàn toàn free; VPS sẽ mất tiền nếu dùng lâu hết hạn, tốt nhất là trả phí hoặc dùng server riêng chứ k dùng free như v 
+=> Dùng Heroku cũng như google firebase v, k mở terminal của hệ điều hành của nó để chạy nginx được mà chỉ là 1 hosting k config được thôi
+=> Digital Ocean chỉ là 1 công cụ cung VPS, tức cung 1 cái máy có ip public. Ta có thể dùng laptop cá nhân thay thế VPS này bằng cách: public ip laptop ra ngoài, ghép tên miền từ namecheap với ip laptop đó, chạy server nodejs và nginx trên máy laptop như bth.
+
+
+
+# Certbot
+Chỉ là 1 tool tự động quá trình cài đặt và cập nhật chứng chỉ SSL/TLS từ Let's Encrypt, một tổ chức cung cấp chứng chỉ SSL/TLS miễn phí.
+Nó mã nguồn mở được phát triển bởi Electronic Frontier Foundation (EFF).
+
+Nó tự động hóa cấp chứng chỉ, cài chứng chỉ, gia hạn, và hỗ trợ các tính năng bảo mật như HSTS và OCSP Stapling.
+
+

@@ -355,3 +355,279 @@ upstream website {
 
 Nginx Plus có thể nhận biết 1 cuộc tấn công DDoS thông qua Status or Dashboard, nó show số liệu và các mẫu lưu lượng bất thường, từ đó ta có thể thực hiện các actions cụ thể.
 
+
+
+# Hosting Nginx
+
+
+
+# Config tiếp file nginx.conf
+-> Dùng log trong nginx
+--> Chỉ thị error_log: VD error_log log_file [ log_level ] => log_level là mức ghi log thấp nhất mà ta muốn ghi lại: debug, info, notice, warn, error, crit, alert, emerg. 
+Khi chỉ định log_level, nó sẽ ghi log từ cấp độ đó đến cấp độ cao hơn cấp độ đó. K tin mở file log_file để thấy nó ghi lại những gì trong quá trình server chạy. Từ đó solve error
+
+--> Nginx access log là 1 loại log khác giống error log nhưng nó sẽ ghi theo mỗi request mà client tạo ra. Dùng chỉ thị: access_log log_file log_format;
+Tưng phần của log_format được xác định bằng biến bắt đầu bằng $. VD enabled nó để nó ghi các nút thắt cổ chai của server => nó sẽ ghi ra log các biến mà ta xác định trong cặp ""
+
+VD log_format có định dạng combined thì kiểu:
+log_format combined '$remote_addr - $remote_user [$time_local]  '
+		    '"$request" $status $body_bytes_sent '
+		    '"$http_referer" "$http_user_agent"'; 
+=> danh sách các biến hỗ trợ: http://nginx.org/en/docs/http/ngx_http_core_module.html#variables
+=> cũng có nhiều định dạng khác, không chỉ combined như main, compression
+
+Chỉ thị access_log
+access_log /path/to/log/location [ format_of_log buffer_size ];
+format_of_log mặc định là combined. buffer_size là kích thước cache.
+Có thể dùng: access_log location format gzip; để nén log file
+
+Trên ubuntu có thể dùng cho error_log /dev/null crit; thì /dev/null là nơi để chọn thì error_log sẽ k ghi lại bất cứ thứ gì
+Dùng access_log off; khi chạy vào các location lỗi là để tắt ghi log đi vì ta biết nó lỗi gì để xử lý r
+
+--> Để tránh đầy dung lượng đĩa thì phải xoay log. Đó là việc chuyển đổi các file log và có thể lưu trữ file cũ trong 1 khoảng tg nhất định. Ta k thể quản lý file log trong nginx nhưng có thể xoay log được:
+mv /path/to/access.log /path/to/access.log.0
+kill -USR1 `cat /var/run/nginx.pid`
+sleep 1
+[ post-rotation processing of old log file ]
+=> đầu tiên di chuyển log hiện tại sang 1 file mới để lưu trữ, có thể đặt nó là .0 và file cũ hơn là .1
+=> lệnh kill -USR1 `cat /var/run/nginx.pid` sẽ gửi tín hiệu reload các file log khiến content được ghi vào file log được làm mới. Tệp nginx.pid là nơi nginx lưu trữ pid của quy trình chính. Điều này chỉ đúng trong linux
+=> xoay vòng xong ta sleep 1 để hoàn tất, ta có thể nén file cũ or làm gì tùy ý.
+
+Cách 2 để xoay vòng là dùng logrotate: nó là chương trình cài sẵn trên ubuntu và nginx trên ubuntu đi kèm với tập lệnh logrotate tùy chỉnh => kqtr
+
+-> $uri là biến chỉ phần của url đăng sau domain name
+VD1 TH gửi lại cho người dùng default GIF file nếu file k tồn tại:
+location /images/ {
+  try_files $uri $uri/ /images/default.gif;
+}
+location = /images/default.gif {
+  expires 30s;
+}
+=> Người dùng request http://www.domain.com/images/image1.gif => nginx sẽ tìm image1.gif trong chỉ thị root or alias xác định từ trước, nếu k có nó sẽ tìm trong image1.gif/ và k tìm thấy sẽ lấy tiếp /images/default.gif => nó sẽ chạy sang chỉ thị location thứ 2 và dừng process, nginx sẽ lấy file đó và đánh dấu trong cache trong 30s 
+
+VD2 try_files $uri =404; lấy $uri nếu k tồn tại sẽ trả 404
+
+--> Cache trong nginx
+Cấu hình HTTP Caching cho Nginx được áp dụng phổ biến trên tất cả trình duyệt web hiện đại. Ta sẽ dùng nó để cải thiện thời gian phản hồi về client và giảm tải các request cho máy chủ. Nếu cấu hình k chính xác thì người dùng có thể nhận về nội dung cũ và khó fix bug. HTTP caching xảy ra khi trình duyệt nó tự lưu lại bản sao của tài nguyên trong cache để k phải xử lý request lại từ đầu. 
+Thực hiện điều này sẽ giúp website tăng performance lên nhiều so với để server mặc định của nginx
+Xử lý phải có kỹ thuật: client request file app.js -> server gửi lại cho client -> 2p sau client lại cần file app.js -> server check file đó k có gì thay đổi -> client lấy từ cache của trình duyệt => thực tế ta phải cấu hình nginx sao cho client k cần gửi thêm bất cứ request nào lên server nx mà vẫn có file app.js mà k sợ nó đã bị cũ trên server.
+
+- Giải pháp 1: Weak Caching Header(Etag / Last-Modified) phải request lên server để check sự thay đổi của các tài nguyên
+1.1> Last-Modified => Lần đầu tiên thì server gửi file logo.png kèm tham số last-modified ở response là thời điểm cuối cùng thay đổi của file. Lần tiếp theo request client có thêm If-Modified-Since là giá trị của them số Last-Modified lần trước nhận dược, server check nếu trùng với thời gian thay đổi lần cuối trên server thì trả lại 304 Not Modified để báo cho client biết file này éo đổi gì cả, client sẽ lấy bản sao được lưu cache browser
+1.2> Etag => Tương tự nhưng dùng chuỗi ký tự để check sự thay đổi của file thông qua request header If-None-Match và response Header Etag chứ éo nhất thiết phải là 1 mốc tg. Thực tế, server k lưu lại giá trị Etag để lôi ra check như là Last-Modified mà nó dùng thuật toán để tính ra Etag trong spec của HTTP, điều này giúp server hạn chế update Etag mỗi lần file đổi
+- Giải pháp 2: Strong Caching Header(Expires / Cache-Control) k cần request lên server nx
+2.1> Expires => xác định thời gian hết hạn của file. Khi cần lấy file, client check nó hết hạn chưa, nếu chưa sẽ lấy trong cache trình duyệt. VD: expires 5m; => file hết hạn trong 5p mặc kệ client có request lên server k
+2.2> Cache-Control => thêm các option sau expires trong file cấu hình:
+no-store => file luôn được trả về theo cách thông thường, k lưu trong cache trình duyệt
+no-cache => cache sẽ gửi yêu cầu đến máy chủ để xác thực r mới tiến hành sao chép lưu trong trình duyệt(cache but revalidate)
+private/public => public cho phép file được cache bởi các proxy và server trung gian; private thì browser có thể cache nhưng proxy thì k, chỉ cho phép file có giá trị khác nhau cho các client khác nhau.
+max-age=12355 => thời gian tối đa mà tài nguyên còn hạn sử dụng với cache
+must-revalidate => buộc client phải validate với server trước khi sử dụng các file đã được caching
+
+Còn giải pháp khác như Laravel mix để đánh dấu sự thay đổi của file ngay trong tên file. VD: A.123456.js or a.js?v=123456 làm tên cho file nhưng kp lúc nào cx dùng được.
+
+Khi dùng 1 trong 4 giải pháp chú ý lỗi. VD: ta đặt expires sau 5p nhưng file bị đổi trước đó dẫn đến người dùng nhận lại tài nguyên cũ -> bug => ta nên kết hợp linh hoạt khi mà weak thì tốc độ cao, strong thì lâu hơn nhưng an toàn => các file js, css là những file thường xuyên thay đổi nên dùng giải pháp Etag; các file ảnh, font chữ là file ít đổi nên dùng expires 5p.
+Thực tế các server config mặc định là dùng etag caching cho tất cả file nên ta phải sửa lại VD file config của nginx:
+ server {
+   listen 80;
+   server_name xxxxx; // Thông số đã được ẩn đi ahihi
+   root xxxxx; // Thông số đã được ẩn đi
+
+   add_header X-Frame-Options "SAMEORIGIN";
+   add_header X-XSS-Protection "1; mode=block";
+   add_header X-Content-Type-Options "nosniff";
+
+   index index.html index.htm index.php;
+
+   charset utf-8;
+
+   location / {
+      try_files $uri $uri/ /index.php?$query_string;
+   }
+
+   location ~ \.php$ {
+      fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;
+      fastcgi_index index.php;
+      fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+      include fastcgi_params;
+   }
+
+   location ~* \.(?:css|js)$ {
+      access_log        off;
+      log_not_found     off;
+
+      etag on; // Bật chế độ cache Etag
+   }
+
+   location ~* \.(?:jpg|jpeg|gif|png|ico|xml)$ {
+      access_log        off;
+      log_not_found     off;
+  
+      expires           5m; // Bật chế độ cache expires
+      add_header        Cache-Control "public"; // Caching cả cho proxy
+   }
+ 
+
+   location ~* \.(?:eot|woff|woff2|ttf|svg|otf) {
+      access_log        off;
+      log_not_found     off;
+
+      expires           5m;  // Bật chế độ cache expires
+      add_header        Cache-Control "public"; // Caching cả cho proxy
+      add_header        Access-Control-Allow-Origin *;
+
+      types     {font/opentype otf;}
+      types     {application/vnd.ms-fontobject eot;}
+      types     {font/truetype ttf;}
+      types     {application/font-woff woff;}
+      types     {font/x-woff woff2;}
+   }
+
+   location ~ /\. { 
+      access_log        off; 
+      log_not_found     off; 
+      deny              all; 
+   }
+}
+
+
+
+# Dùng docker với nginx
+-> Nó dùng 1 image là alpine cũng là 1 nền tảng linux xd dựa trên busybox mang tính bảo mật, đơn giản và hiệu suất tài nguyên hợp lý. Nó như 1 bản phân phối đầy đủ tính năng của Linux 
+RUN apk add --no-cache git => apk add <tên gói> để cài 1 gói mới vào alpine với --no-cache là k cache ở command build image. Đây là lệnh của nền tảng alpine
+RUN npm install --production --silient => npm install là cài các package nhưng --production tức nó bỏ qua các package trong devDependencies
+--silient hình như à silent mới đúng tức k log output trong quá trình install
+RUN npm run build sẽ chạy react-scripts build => nên nhớ trong 1 dự án react có 2 môi trường và development thì dùng react-scripts start, còn production thì react-scripts build
+
+Thực tế nó có đến 4 môi trường là dev, test, staging, production cơ
+Tải image nginx và copy config vào đúng thư mục trong docker. Copy đúng thư mục build nx mà khi chạy npm run build mới sinh ra
+RUN mặc định nginx ở foreground với daemon off => nginx k thôi thì sẽ chạy trong background
+=> Là ta đã chạy được dự án với server nginx 
+File .dockerignore sẽ bỏ qua cac thành phần k cần thiết vào image trong quá trình build
+Nhớ chuyển buildkit: false trong setting của docker desktop để chạy được docker build . --tag trava-knight-nft-ui nếu bị lỗi thì thêm option
+docker build . --network host --tag trava-knight-nft-ui => nhưng rất tiếc option ấy éo hoạt động trên window 
+
+-> Khi dùng docker, ta k nên copy cả node_modules r bỏ npm install trong Dockerfile vì thực tế các nền tảng khác nhau nó sẽ cài các dependencies khác nhau nên chạy v dễ báo lỗi. Ta luôn để ignore node_modules ở môi trường ngoài và chạy npm install ở Dockerfile để tránh lỗi đó
+
+Để tối ưu khi chạy trên Docker phải can thiệp vào nhiều thứ như dockerignore, docker layer, layer caching, multistage build trong docker,... Có các bài riêng giảng về nó có thể tối ưu hàng trăm GB
+
+
+
+# Thực hành dùng pm2 tạo nhiều instance của server, tạo hẳn 3 cái server của nodejs và dùng nginx để cân bằng tải 4 server này
+=> ref tới "UseNginx / nginx-loadbalancer"
+
+-> Dùng pm2: npm install pm2
+pm2 list
+pm2 stop id
+pm2 delete id
+pm2 delete all
+pm2 start file.js -f
+pm2 restart app.js 
+pm2 logs
+pm2 flush => xóa logs đã có
+pm2 startup ubuntu => nếu server reboot thì pm2 tự động chạy lại luôn chứ ta kp chạy thủ công lại
+pm2 unstartup ubuntu
+-> để pass args vào file.js, ta phải dùng file.json để file.js có thể lấy thông qua process.argv[2]
+=> pm2 start file.json --only <name>
+
+Chạy: pm2 start process.json app-dev => sẽ chạy tất cả các cái có tên app-dev, app-dev1,..
+
+-> cấu hình config cho nginx làm cân bằng tải có 4 server.
+-> mở cmd vào url có file nginx.exe 
+-> chạy: taskkill /f /im nginx.exe để tắt các nginx cũ
+-> chạy: start nginx.exe để restart cái nginx 
+
+-> Các cách cấu hình cân bằng tải
+- RoundRobin quay vòng:
+http {
+  upstream backend_servers {
+    server localhost:3000;
+    server localhost:3001;
+    server localhost:3002;
+  } 
+  server {
+    listen 80;
+    server_name localhost; # Trong linux ta đổi tên được bằng cách đi vao etc/host
+    location / {
+      proxy_pass http://backend_servers;
+    }       
+  }
+}
+
+Weighted Round Robin theo độ ưu tiên:
+http {
+  upstream backend_servers {
+    server localhost:3000 weight=1;
+    server localhost:3001 weight=3;
+    server localhost:3002 weight=2;
+  } 
+  server {
+    listen 80;
+    server_name nginx-tutorial.test;
+    location / {
+      proxy_pass http://backend_servers;
+    }       
+  }
+}
+=> cái 3001 có độ ưu tiên cao nhất nên sẽ ưu tiên gửi vào 3001 trước
+
+Least Connections:
+http {
+  upstream backend_servers {
+    least_conn;
+    server localhost:3000;
+    server localhost:3001;
+    server localhost:3002;
+  } 
+  server {
+    listen 80;
+    server_name nginx-tutorial.test;
+    location / {
+      proxy_pass http://backend_servers;
+    }       
+  }
+}
+=> gửi tới server có ít connection nhất. 3 server mà lượng kết nối như nhau cx sẽ quay tuần tự thôi
+
+IP hash:
+http {
+  upstream backend_servers {
+    ip_hash;
+    server localhost:3000;
+    server localhost:3001;
+    server localhost:3002;
+  } 
+  server {
+    listen 80;
+    server_name nginx-tutorial.test;
+    location / {
+      proxy_pass http://backend_servers;
+    }       
+  }
+}
+=> dựa vào ip của client lần trước connection như nào lần này vào tiếp server đó
+
+Ngoài ra còn thuật toán least time chỉ dùng được ở bản trả phí của nginx
+=> Tùy bài toán mà thuật toán dùng khác nhau VD ứng dụng cần tính toán nhiều cho mỗi request như convert video online thì dùng least time tối ưu nhất
+
+=> Ta có thể tiếp tục bao hosting bên ngoài nó để host cái web nodejs này lên public bằng cách dùng VPS -> khi đã có VPS thì vào terminal cửa số của VPS thì nhét dự án này của ta vào đó và trong file config của nginx nhớ đổi: server_name <YourVPSIpAddress>; và ta có thể truy cập public được website của ta
+Khi có VPS, ta có thể đăng nhập để dùng terminal của cái VPS đó, mặc định thg là ubuntu. Ta sẽ cài nodejs, npm như mới trong cái ubuntu đó và copy dự án của ta vào để chạy thôi. Nhiều nền tảng VPS hỗ trợ sẵn nodejs và npm thì k cần cài thủ công nữa or vẫn phải cài cho đúng phiên bản
+
+--> Lệnh proxy_pass trong cấu hình nginx làm cho máy chủ chặn reverse proxy. Nó xác định tất cả lưu lượng sẽ được redirect đến đâu
+Còn cái server-name thật ra muốn set phải có 1 tên miền sẵn rồi, phải đk từ trước
+
+--> Dùng pm2 với frontend: PM2 có thể dùng cả frontend và backend thoải mái
+Dùng tương tự với dự án react chỉ hơi khác 1 tí là PM2 ta k chạy file js bth mà lệnh npm start thực chất cần chạy thành: pm2 start node_modules/react-scripts/scripts/start.js là xong
+
+
+
+# Other
+-> Forward Proxy là trung gian cho client liên hệ với bất kỳ máy chủ nào thì Reverse Proxy là trung gian cho các máy chủ liên kết với nó có thể được liên lạc bởi bất cứ client nào. Nó kiểm soát yêu cầu của client và lọc nếu hợp lệ sẽ chuyển đến service thích ứng
+
+-> Lệnh "curl url" trên cmd ok nhưng trên VSC k hđ, phải dùng gitbash mới được
+
+-> .dockerignore sẽ bỏ những file nào trong quá trình build image từ Dockerfile
+.prettierignore và .eslintignore được dùng để xác định file nào sẽ k tự động format code và lint báo lỗi. 
+Trong prettierignore cần bỏ các file k thuộc ngôn ngữ js, html, css. Trong eslintignore chỉ bỏ vài file build ra thôi vì cần check hết. Trong gitignore bỏ tất cả các file tự sinh ra khi dùng dự án và file .env. Trong dockerignore bỏ các file mà có thể tự sinh ra khi dùng dự án, các thứ dùng cho dev mà k dùng cho production vì nó chỉ chạy 1 phát production luôn.
+
+

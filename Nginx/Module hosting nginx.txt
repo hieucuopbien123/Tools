@@ -1,0 +1,149 @@
+# Hosting Nginx
+
+-> Pb:
+Máy chủ vật lý là 1 máy tính riêng biệt chạy 1 hđh và các ứng dụng cài trực tiếp lên nó
+VPS: VD ta có 1 máy chủ vật lý và dùng 1 phần mềm ảo hóa để tạo ra nhiều máy chủ ảo trên máy chủ vật lý đó. Mỗi máy chủ ảo có thể chạy 1 hđh riêng biệt, dùng chung tài nguyên với các VPS khác trên cùng máy
+
+VD Ta có thể cấu hình laptop cá nhân thành server vật lý or VPS:
+- Ta cài đặt các dịch vụ máy chủ muốn sử dụng (như Apache, MySQL, PHP, v.v.) trực tiếp lên laptop hệ điều hành Windows là thành 1 server vật lý
+- Ta dùng phần mềm ảo hóa như VMware hoặc VirtualBox rồi cài chạy các server trên đó. Mỗi server này có thể chạy một hệ điều hành riêng biệt và có các ứng dụng riêng, cung ra ngoài mạng host và truy cập được ngoài internet thì gọi là 1 VPS
+=> Có nhiều nơi cung ra ngoài VPS và hỗ trợ hosting miễn phí, cơ chế y hệt như v
+
+-> Có 4 loại web hosting: 
+- Shared hosting(hay hosting): trang web của ta đặt trên 1 máy chủ cùng vói nhiều trang web khác. các website chia sẻ tài nguyên từ máy chủ như RAM, CPU. Chi phí thấp, kỹ năng chuyên môn k cao. VD: ta host mấy trang web lên máy chủ free r ấy. Bảo mật không tốt vì hàng đống website cùng IP máy chủ. Nhưng dù sao vẫn tốt hơn host trên máy tính cá nhân k chuyên dụng
+
+- VPS(Virtual Private Server) là máy chủ chuyên dụng nhưng chỉ là ảo được chia ra từ 1 máy chủ, có ip riêng. Người dùng có thể can thiệp sâu vào VPS của mình, phù hợp các trang web cần kiểm soát bảo mật và tốc độ xử lý tốt hơn mà k cần đầu tư vào hẳn 1 máy chủ. K bị ảnh hưởng hiệu suất bởi các website khác nếu máy host k bị quá tải. 
+Với shared host ta sẽ chia ra làm nhiều shared host dùng chung tài nguyên trên nền 1 máy chủ vật lý. Còn VPS thì máy chủ vật lý chia ra làm nhiều phần và trong đó có 1 cục VPS là 1 máy chủ ảo có IP riêng chạy trên nền máy chủ vật lý đó mà người dùng có quyền quản trị của riêng họ, bảo mật và mức độ tài nguyên sử dụng tự customer lo. Đương nhiên giá cao hơn hosting
+
+- Server(máy chủ dùng riêng): cung quyền kiểm soát hoàn toàn website mà k lo bảo mật, có thể cho người khác thuê lại. Chi phí có riêng 1 cái khá cao vì phải đảm bảo về phần cứng, các công ty bảo mật toàn dùng cách này. Tự bảo trì và quản lý máy chủ. Vẫn dùng chung server vật lý với người khác nhưng được phân bố 1 vùng riêng.
+
+Máy tính của ta cũng có thể cho host thành 1 máy chủ được, nó sẽ là server dùng riêng mỗi tội phần cứng và hiệu năng kém. PC làm host thường chạy hệ điều hành FreeNAS
+
+- Cloud Hosting: khả năng không giới hạn xử lý lượng truy cập lớn. Trả thêm phí nếu muốn can thiệp sâu vào hệ thống. 1 nhóm các máy chủ làm việc chung với nhau để quản lý 1 nhóm các website. Đây là giải pháp ok nhất trên thị trường. Nhà cung cấp có 1 bộ các server và tài nguyen phân bố trên server, nếu 1 trong các server quá tải or sập thì traffic tự được chuyển tới server khác
+
+-> Các phương án để đưa website lên internet:
+1) deploy và host trên dịch vụ cung cấp JAM stack như Cloudflare
+2) deploy và host trên dịch vụ cloud có lựa chọn miễn phí như Heroku
+3) deploy và host trên server ảo VPS
+4) deploy và host trên server riêng
+
+1 kiến trúc VPS react nginx khác: 
+Client --SSL--> VPS[Nginx -> PM2 -> Serve{HTML, CSS, JS, IMAGE}]
+
+-> PM2 là package giúp khởi động lại dự án khi VPS bị restart hay app bị crash. Nếu k có thì khi gặp TH như v ta phải tự vào vps và chạy npm start ở folder dự án thủ công. 
+PM2 còn giúp quản lý log, quản lý nhiều instance website chạy nodejs cùng 1 VPS, hỗ trợ load-balancing cho các instance để tận dụng max số core của server vì mặc định nodejs dùng single thread
+
+-> VD Khi dùng VPS thì dự án chạy mặc định cổng 3000 thì ta có thể dùng trình duyệt local truy cập vào vps port 3000 với: http://ip.cua.vps:3000 . Vì mỗi khi vào app thì http://ip.cua.vps:3000 sẽ bất tiện. Ta có thể mua tên miền và trỏ vào địa chỉ ip của vps bằng cách vào DNS chỉnh sửa để khi người dùng gõ domain.cua.ban hay www.domain.cua.ban sẽ ra ip.cua.vps . Sau đó dùng nginx làm webserver có nhiệm vụ nhận request từ cổng mặc định 80 và 443 tại domain đó rồi reverse proxy sẽ chuyển hướng về react đang chạy ở localhost:3000 -> phải copy folder build vào url root/build
+=> Nh lúc vẫn éo chạy được trên phone
+
+Có thể tạo SSL cho ứng dụng với certbot miễn phí
+
+
+
+
+
+
+
+“X-Ms-Tnm-Applicationid” is a custom HTTP header that is used to identify the application ID of a tenant in Microsoft Graph1. It is a GUID (globally unique identifier) that is assigned to each tenant when they register their application with Microsoft Graph. The header is used to authenticate and authorize the requests made by the tenant to the Microsoft Graph API1.
+
+The header is also used to track the usage and performance of the tenant’s application, as well as to provide diagnostic information in case of errors or failures1. The header can be set in the request headers of any HTTP request to Microsoft Graph, such as:
+
+GET https://graph.microsoft.com/v1.0/me
+Host: graph.microsoft.com
+Authorization: Bearer <token>
+X-Ms-Tnm-Applicationid: <application-id>
+
+The header is optional, but it is recommended to use it for better service quality and support1.
+
+Learn more:
+1. github.com
+1
+of
+30
+
+
+
+
+Is this header fix value
+Generating answers for you…
+
+Generating answers for you…
+
+Your personal and company data are protected in this chat
+No, the header is not a fixed value. The header value is the application ID of the tenant’s application, which is different for each tenant. The application ID is a GUID that is assigned to the tenant when they register their application with Microsoft Graph. You can find your application ID in the Azure portal under App registrations. You can also use the Microsoft Graph PowerShell module to get your application ID by running the command:
+
+Get-MgApplication -Filter "displayName eq '<your-app-name>'" | Select-Object -ExpandProperty AppId
+
+: [Using custom HTTP headers with Microsoft Graph - Microsoft Graph | Microsoft Docs] : [Register an application with the Microsoft identity platform - Microsoft identity platform | Microsoft Docs]
+
+
+
+
+Antigua and Barbuda      AG
+Argentina                AR
+Austria                  AT
+Bahamas                  BS
+Barbados                 BB
+Belarus                  BY
+Belgium                  BE
+Belize                   BZ
+Bermuda                  BM
+Botswana                 BW
+Brazil                   BR
+Brunei                   BN
+Bulgaria                 BG
+Canada                   CA
+Cayman Islands           KY
+Colombia                 CO
+Croatia                  HR
+Cyprus                   CY
+Czechia                  CZ
+Denmark                  DK
+Dominica                 DM
+Ecuador                  EC
+Estonia                  EE
+Finland                  FI
+France                   FR
+Grenada                  GD
+Guam                     GU
+Honduras                 HN
+Hungary                  HU
+Indonesia                ID
+Ireland                  IE
+Italy                    IT
+Jamaica                  JM
+Jordan                   JO
+Kenya                    KE
+Latvia                   LV
+Lithuania                LT
+Luxembourg               LU
+Macedonia, FYRO          MK
+Malaysia                 MY
+Malta                    MT
+Moldova                  MD
+Monaco                   MC
+Netherlands              NL
+New Zealand              NZ
+Northern Mariana Islands MP
+Norway                   NO
+Panama                   PA
+Paraguay                 PY
+Poland                   PL
+Portugal                 PT
+Puerto Rico              PR
+Romania                  RO
+Saint Kitts and Nevis    KN
+Saint Lucia              LC
+Serbia                   RS
+Singapore                SG
+Slovakia                 SK
+Slovenia                 SI
+South Africa             ZA
+Spain                    ES
+Sweden                   SE
+Switzerland              CH
+Trinidad and Tobago      TT
+Turks and Caicos Islands TC
+United Kingdom           GB
+United States            US
+Uruguay                  UY

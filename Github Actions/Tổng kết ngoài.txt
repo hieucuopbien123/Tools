@@ -1,0 +1,16 @@
+-> CI/CD là giải pháp để liên tục build, test, merge, deploy tự động. 
+CI/CD pipeline liên tục qua từng bước, VD nếu bước build fail sẽ k thể thực hiện sang bước tiếp theo và ứng dụng vẫn ở phiên bản thành công cuối cùng trước đó.
+
+CI là continuous integration tức code thay đổi thì tự động build, test và merge vào shared repo. CD là continuous delivery (deploy sang bản non-production) hoặc hiểu là continuous deployment (deploy sang bản production)
+Nhiều công ty áp dụng CI/CD cho developer deploy sang các nhanh dev, sau đó admin là người duy nhất có quyền merge vào nhánh master để tự động deploy sản phẩm ở dạng dùng thử non-production or staging environment(bản test cho qa). Sau khoảng vài tháng mới chốt release nó thành version production mới.
+
+-> Github Actions
+Ta hiểu github actions giúp tự động hóa hàng loạt các tác vụ khi sự kiện xảy ra, VD khi push code lên thì thực hiện lần lượt các hành động nào theo pipeline
+
+Ta có thể tự host trên server riêng or cloud nào đó rồi dùng github actions tự động hóa việc chạy các lệnh để deploy. 
+Trước h ta từng dùng firebase hosting or vercel hosting kết hợp với github actions để tự động: push code lên -> github actions sẽ build và deploy -> thành công thì host lên firebase hay vercel tự động.
+Nhưng firebase hay vercel đều support github actions đến tận răng, tự động sinh workflow mặc định ta k cần làm gì. Nếu ta muốn thực hiện các câu lệnh phức tạp trên các nền tảng khác sẽ phải tự code workflow, push lên thì chạy từng dòng lệnh nào phải ghi ra.
+
+-> Digital Ocean: nền tảng hỗ trợ CI/CD rất đa năng nhưng mất phí => bỏ
+
+

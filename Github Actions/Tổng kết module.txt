@@ -2,8 +2,6 @@ Github Actions
 Tool CI/CD rất mạnh của DevOps. Ta có thể viết code cho nó tự động hóa mọi thứ. VD push code lên git lên là tự động build và deploy luôn
 Có nhiều công cụ hỗ trợ sẵn github actions như vercel, nó hỗ trợ quá nhiều đến nỗi ta chỉ cần chọn mà k cần code flow tự động hóa. Với các ứng dụng lớn, yêu cầu phải code github actions custom cho từng tác vụ
 
-=> ref tới "Other / CICD"
-
 
 
 # Basic
@@ -16,13 +14,14 @@ Các event có thể trigger: https://docs.github.com/en/actions/using-workflows
 Tương tác với repo qua API => ít dùng:
 https://docs.github.com/en/rest/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event
 
--> Actions
+-> Actions: các hành động cài đặt lặp đi lặp lại, có thể dùng actions có sẵn
 Ta có thể bắt mọi event tương tác với github và làm bất cứ điều gì thông qua workflows. Workflows có sẵn được cộng đồng tạo có thể dùng, hoạt động với tất cả mọi ngôn ngữ và nền tảng.
 
 Events ---trigger---> Workflows ---Use---> Actions
 
 Ta có thể tự tạo actions và cho lên marketplace.
 Có thể viết actions bằng bất cứ ngôn ngữ nào miễn có thể compiled ra JS, tối thiểu phải có 2 file là index.js và action.yml config cho chạy index.js
+1 actions có thể pull code từ git hay setup các tool chain lớn. Trên marketplace có sẵn các actions như setup java jdk, setup .net core sdk, setup go evironment,...
 
 K nên tạo 1 action làm quá nhiều thứ vì sẽ rất khó debug lỗi cũng như khi thêm bớt các step tính năng mới, ta sẽ phải viết lại actions. 
 Steps có thể là 1 action hoặc commands
@@ -210,6 +209,18 @@ VD: 20/15 * * * * là chạy mỗi 15 phút từ phút thứ 20 mỗi giờ (t�
 
 => Còn rất nhiều cách để trigger workflow như tạo comment hay xóa branch,...
 
+-> Jobs: có thể là 1 script do ta viết or 1 action
+Mỗi job được chạy trong 1 virual machine runner or 1 container riêng.
+Event -> Runner1[Job1[run action -> run script -> run action]] -> Runner2[Job2[run action -> run script]]
+
+=> Default các job sẽ run parallel, ta có thể setup run tuần tự. 
+
+-> Runner là 1 server máy ảo chạy cái workflow, có sẵn đủ linux, window, macos. Nếu ta cần các điều kiện phần cứng phức tạp có thể host riêng 1 runner
+1 runner chỉ chạy được 1 job 1 lúc.
+
+-> Ta có thể tạo workflow dùng github actions bất cứ lúc nào bằng cách tạo file .yaml đặt trong .github/workflows
+Khi có workflow, github actions sẽ check code được pushed và cài BATS(Bash Automated Testing System) testing framework rồi chạy command hiển thị version: bats -v
+
 
 
 # Debug 
@@ -335,4 +346,11 @@ Nếu CICD thành công mà public ip k hiển thị khi vào web thì AWS phả
 # Other
 Nhờ chat GPT4 sinh mẫu workflow basic cho các kiểu ứng dụng khác nhau được
 
+
+
+# Dùng github actions tạo dynamic file readme
+Ý tưởng là tạo ra 1 file readme template và code template cho file đó bằng markdown. Rồi tạo 1 github actions riêng nhận data và filter vào chỗ trống đó. Có thể dùng Go Template để làm điều này
+Github Actions có thể chạy với cron job, ta xác định ktg nó fetch lại data update tự động vào templdate cho cronjob. Rồi commit lên là xong.
+=> Sau đó cứ mỗi time interval cronjob sẽ tự chạy lại actions của ta để update data vào readme.template và cho ra output là Readme.md show ra trên git.
+URL: https://dev.to/jacktt/creating-dynamic-readmemd-file-388o?fbclid=IwAR2XUYI_UdIzb-Owtk4H8-JCy8zvDKLBYec5OrJLViCeb0EnkNffMTcIl-U
 

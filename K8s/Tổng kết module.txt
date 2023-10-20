@@ -335,7 +335,8 @@ Dùng replicaset độc lập không hay, họ thường dùng Deployment tốt 
 # Other
 -> Dừng series từ Deployment:
 https://xuanthulab.net/deployment-trong-kubernetes-trien-khai-cap-nhat-va-scale.html
-
 Còn có PV, PVC, Ingress, Rancher2, Deployment, Service Headless, DaemonSet, CronJob, NFS, Secret
+
+Series khác: https://viblo.asia/s/kubernetes-series-bq5QL8QGlD8
 
 

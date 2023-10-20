@@ -260,6 +260,8 @@ Docker build bị lỗi ở bước nào khi build lại sẽ tiếp ở bước
 # Dùng dockercompose
 File docker compose có định dạng .yml lưu dữ liệu dạng key val (giống json ấy). Nó tuân thủ đúng từng dấu cách dòng. Dockerfile kêt hợp với docker build chỉ để tạo ra 1 images trong khi docker compose tạo hẳn 1 app có đầy đủ dịch vụ nhiều images cx đc.
 
+Docker-compose giúp combine các ứng dụng lại. Vd 1 dockerfile cung service mongodb tương tác với 1 dockerfile cung server nodejs.
+
 -> Thực hành: Dùng docker compose tạo ra 3 dịch vụ của ứng dụng là mysql, httpd, php. Đồng thời 3 dịch vụ tạo ra trong cùng 1 network và ổ đĩa để chia sẻ dữ liệu:
 Ta sẽ xây 1 ứng dụng có 3 dịch vụ:
 container php-product chạy từ image PHP:7.3-fpm trên cổng 9000 cài mysqli, pdo_mysql và thư mục làm việc là /home/sites/site1

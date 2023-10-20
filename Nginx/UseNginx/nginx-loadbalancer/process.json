@@ -1,0 +1,43 @@
+{
+    "apps" : [
+      // {
+      //   "name"               : "app-prod",
+      //   "script"             : "index.js",
+      //   "env": {
+      //     "NODE_ENV": "production"
+      //   }
+      // },
+      {
+        "name"               : "app-dev",
+        "script"             : "index.js",
+        "args"               : "3000",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      },
+      {
+        "name"               : "app-dev1",
+        "script"             : "index1.js",
+        "args"               : "3001",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      },
+      {
+        "name"               : "app-dev2",
+        "script"             : "index2.js",
+        "args"               : "3002",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      },
+      {
+        "name"               : "app-dev3",
+        "script"             : "index3.js",
+        "args"               : "3003",
+        "env": {
+          "NODE_ENV": "development"
+        }
+      }
+    ]
+  }
