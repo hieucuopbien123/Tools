@@ -1,0 +1,24 @@
+Phím tắt website:
+doc.new
+form.new
+sheet.new
+slide.new
+site.new
+note.new
+cal.new
+meet.new
+design.new
+figma.new
+image.new
+link.new
+excel.new
+ppt.new
+docx.new
+gist.new
+repo.new
+pen.new
+quiz.new
+
+jwt.io
+1ty.me
+
