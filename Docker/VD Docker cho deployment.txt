@@ -6,7 +6,7 @@ VD deploy 1 server NodeJS Express sử dụng PM2 quản lý 2 instance và Ngin
 
 PM2 chạy nhiều instance của ứng dụng trên cùng 1 port mà tăng hiệu suất được vì nó sử dụng 1 tính năng gọi là "cluster mode". 
 Khi 1 ứng dụng chạy trong chế độ cluster, nó tạo 1 tiến trình master ở 1 port và tiến trình này tạo ra nhiều tiến trình worker, mỗi worker là 1 instance của ứng dụng. Khi có request, master sẽ phân bố đến worker giúp tăng khả năng xử lý đồng thời.
-Ko dùng cluster mode cho ứng dụng duy trì trạng thái biến toàn cụng hay kết nối đến cơ sở dữ liệu vì mỗi instance là độc lập
+Ko dùng cluster mode cho ứng dụng duy trì trạng thái biến toàn cụn hay kết nối đến cơ sở dữ liệu vì mỗi instance là độc lập
 
 --> Nginx dùng làm reverse proxy đến nhiều server backend độc lập, cấu hình load balancer giữa các server, bảo mật SSL/TLS, hiệu suất xử lý cao
 
