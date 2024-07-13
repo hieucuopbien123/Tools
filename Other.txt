@@ -1,0 +1,14 @@
+-> https://github.com/wg/wrk 
+Test benchmark request mạnh cho máy multicore. Cách tải nhanh nhất là hỏi GPT4
+
+-> https://lightning.ai  
+Dùng online VSC cloud GPU mạnh tạm thời
+
+-> http://www.plantuml.com/plantuml/uml
+Plant UML vẽ UML diagram bằng code đỉnh
+
+-> Fiddler: 
+Tool bắt gói tin mà máy gửi đi, có thể biết mọi thông tin request. VD debug powershell biết được nó gửi request gì đi mà việc dùng thông thường k thể thấy được
+
+-> Fig.io: best tool autocomplete terminal, chuyển sang Amazon Code Whisper
+

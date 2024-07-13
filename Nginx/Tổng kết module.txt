@@ -2,6 +2,13 @@ Nginx
 
 
 
+
+***Forward Proxy: Đại diện cho người dùng trong việc truy cập các tài nguyên trên Internet. Nó ẩn danh người dùng và có thể cung cấp các chức năng như bộ lọc nội dung, kiểm soát truy cập, và cache để tăng tốc độ truy cập. Forward proxy đứng giữa người dùng và Internet.
+Reverse Proxy: Đại diện cho máy chủ trong việc nhận các yêu cầu từ Internet. Nó có thể cân bằng tải, mã hóa SSL, cache và bảo mật cho máy chủ. Reverse proxy đứng giữa Internet và máy chủ, giúp ẩn và bảo vệ máy chủ thực.
+
+
+
+
 # Basic
 Nginx là 1 web server nổi tiếng thứ 2 sau Apache. Mã nguồn mở, hướng đến cải thiện tối đa hiệu năng và sự ổn định. Nó có thể làm nhiều hơn 1 máy chủ bình thường như Proxy server(cho IMAP, POP3, SMTP), reverse proxy, load balancer cho các máy chủ(TCP, UDP, HTTP).
 Cũng có các web server khác như Google Server, IIS,..
